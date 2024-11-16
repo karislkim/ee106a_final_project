@@ -124,11 +124,11 @@ def controller(waypoint):
 
 def planning_callback(msg):
   try:
-    # trajectory = plan_curved_trajectory((msg.x, msg.y)) # TODO: What is the tuple input to this function?
-    # print(trajectory)
+    trajectory = plan_curved_trajectory((msg.x, msg.y)) # TODO: What is the tuple input to this function?
+    print(trajectory)
 
     # TODO: write a loop to loop over our waypoints and call the controller function on each waypoint
-    trajectory = [[1, 1, 0]]
+    # trajectory = [[0, 3, 0]]
     for i in trajectory:
       print("THIS IS I: " + str(i))
       controller(i)
@@ -146,6 +146,7 @@ if __name__ == '__main__':
 
   #Run this program as a new node in the ROS computation graph 
   #called /turtlebot_controller.
+  
   rospy.init_node('turtlebot_controller', anonymous=True)
 
   rospy.Subscriber("/goal_point", Point, planning_callback) # TODO: what are we subscribing to here?

@@ -39,14 +39,14 @@ def controller(waypoint):
 
   # All in the form [x, y]
   # NOTE: The Turtlebot typically does not need an integral term so we set it to 0 to make this a PD controller
-  # Kp = np.diag([2, 0.8]) # TODO: You may need to tune these values for your turtlebot
-  # Kd = np.diag([-0.5, 0.5]) # TODO: You may need to tune these values for your turtlebot
-  # Ki = np.diag([-0.1, 0.1])
+  Kp = np.diag([2, 0.8]) # TODO: You may need to tune these values for your turtlebot
+  Kd = np.diag([-0.5, 0.5]) # TODO: You may need to tune these values for your turtlebot
+  Ki = np.diag([-0.1, 0.1])
 
-  # prev_time = rospy.get_time() # TODO: initialize your time, what rospy function would be helpful here?
-  # integ = np.zeros((2, 1), dtype=float) # TODO: initialize an empty np array -- make sure to keep your sizes consistent
-  # derivative = np.zeros((2, 1), dtype=float) # TODO: initialize an empty np array 
-  # previous_error = np.zeros((2, 1), dtype=float) # TODO: initialize an empty np array 
+  prev_time = rospy.get_time() # TODO: initialize your time, what rospy function would be helpful here?
+  integ = np.zeros((2, 1), dtype=float) # TODO: initialize an empty np array -- make sure to keep your sizes consistent
+  derivative = np.zeros((2, 1), dtype=float) # TODO: initialize an empty np array 
+  previous_error = np.zeros((2, 1), dtype=float) # TODO: initialize an empty np array 
 
   # Loop until the node is killed with Ctrl-C
   while not rospy.is_shutdown():
@@ -111,9 +111,9 @@ def controller(waypoint):
       prev_time = curr_time
       pub.publish(control_command)
 
-      # if np.abs(error[0]) <= 0.02 and np.abs(error[1] <= 0.01) : #TODO: what is our stopping condition/how do we know to go to the next waypoint?
-      #   print("Moving to next waypoint in trajectory")
-      #   return
+      if np.abs(error[0]) <= 0.02 and np.abs(error[1] <= 0.01) : #TODO: what is our stopping condition/how do we know to go to the next waypoint?
+        print("Moving to next waypoint in trajectory")
+        return
 
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
       print("TF Error in Turtlebot Controller: " + e)
@@ -128,7 +128,6 @@ def planning_callback(msg):
     print(trajectory)
 
     # TODO: write a loop to loop over our waypoints and call the controller function on each waypoint
-    # trajectory = [[0, 3, 0]]
     for i in trajectory:
       print("THIS IS I: " + str(i))
       controller(i)

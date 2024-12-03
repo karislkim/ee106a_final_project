@@ -130,13 +130,14 @@ class ObjectDetector:
             if distance < min_distance:
                 min_distance = distance
                 closest_object = (cx, cy) # center of closest object
-        print("MIN DISTANCE: " + str(min_distance))
+   
         # # Calculate the center of the detected region by 
         # center_x = int(np.mean(x_coords))
         # center_y = int(np.mean(y_coords))
 
         # Fetch the depth value at the center
         depth = self.cv_depth_image[closest_object[1], closest_object[0]]
+        is_green = None
 
         if self.fx and self.fy and self.cx and self.cy:
             camera_x, camera_y, camera_z = self.pixel_to_point(closest_object[0], closest_object[1], depth)
@@ -145,6 +146,11 @@ class ObjectDetector:
             camera_link_x /= 1000
             camera_link_y /= 1000
             camera_link_z /= 1000
+
+            # determine if block is orange or green # TEST THIS ON WEDNESDAY 12/4
+            cx, cy, _ = closest_object
+            is_green = green_mask[cy, cx] > 0
+
 
             # Convert the (X, Y, Z) coordinates from camera frame to odom frame
             try:

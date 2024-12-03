@@ -105,5 +105,5 @@ if __name__ == '__main__':
     trajectory = plan_curved_trajectory()
 
     # For testing
-    trajectory = generate_bezier_waypoints(0.0, 0.0, np.pi/2, 0.2, 0.2, np.pi/2, offset=0.2, num_points=100)
+    # trajectory = generate_bezier_waypoints(0.0, 0.0, np.pi/2, 0.2, 0.2, np.pi/2, offset=0.2, num_points=100)
     plot_trajectory(trajectory)

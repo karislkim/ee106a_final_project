@@ -1,2 +1,2 @@
 
--DCATKIN_DEVEL_PREFIX=/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/devel -DCMAKE_INSTALL_PREFIX=/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/install -G Unix Makefiles
+-DCATKIN_DEVEL_PREFIX=/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/ee106a_final_project/devel -DCMAKE_INSTALL_PREFIX=/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/ee106a_final_project/install -G Unix Makefiles

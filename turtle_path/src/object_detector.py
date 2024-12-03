@@ -83,19 +83,33 @@ class ObjectDetector:
         # update lower_hsv and upper_hsv directly
 
         # Green item HSV values (represents recycling)
-        green_lower_hsv = np.array([57, 110, 39]) 
-        green_upper_hsv = np.array([89, 255, 255])
+        # green_lower_hsv = np.array([57, 110, 39]) 
+        # green_upper_hsv = np.array([89, 255, 255])
 
         # TODO: get hsv values for red
+        green_lower_hsv = np.array([0, 120, 120])
+        green_upper_hsv = np.array([85, 255, 255])
 
+        orange_lower_hsv = np.array([0, 142, 162])
+        orange_upper_hsv = np.array([179, 255, 255])
 
         # Threshold the image to get only green color
         # HINT: Lookup cv2.inRange()
-        mask = cv2.inRange(hsv, lower_hsv, upper_hsv)
-
-        # TODO: Threshold the image to get only the other color
+        green_mask = cv2.inRange(hsv, green_lower_hsv, green_upper_hsv)
+        orange_mask = cv2.inRange(hsv, orange_lower_hsv, orange_upper_hsv)
 
         # TODO: Combine the masks using cv2.bitwise_or
+        combined_mask = cv2.bitwise_or(green_mask, orange_mask)
+
+
+        # TODO: Get the coordinates of the closest object
+        # HINT: Lookup np.nonzero()
+        y_coords, x_coords = np.nonzero(combined_mask) # dont forget to change the variable of mask to to combined mask
+
+        # If there are no detected points, exit
+        if len(x_coords) == 0 or len(y_coords) == 0:
+             print("No points detected. Is your color filter wrong?")
+             return
 
         # TODO: Find contours after mask is applied to image
         contours, _ = cv2.findContours(combined_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -114,23 +128,14 @@ class ObjectDetector:
             distance = (cx**2 + cy**2)**0.5
             if distance < min_distance:
                 min_distance = distance
-                closest_object = (x, y)
-
-        # TODO: Get the coordinates of the closest object
-        # HINT: Lookup np.nonzero()
-        # y_coords, x_coords = np.nonzero(mask) # dont forget to change the variable of mask to to combined mask
-
-        # If there are no detected points, exit
-        if len(x_coords) == 0 or len(y_coords) == 0:
-             print("No points detected. Is your color filter wrong?")
-             return
-
+                closest_object = (cx, cy) # center of closest object
+        print("MIN DISTANCE: " + str(min_distance))
         # # Calculate the center of the detected region by 
         # center_x = int(np.mean(x_coords))
         # center_y = int(np.mean(y_coords))
 
         # Fetch the depth value at the center
-        depth = self.cv_depth_image[closest_object[0], closest_object[1]]
+        depth = self.cv_depth_image[closest_object[1], closest_object[0]]
 
         if self.fx and self.fy and self.cx and self.cy:
             camera_x, camera_y, camera_z = self.pixel_to_point(closest_object[0], closest_object[1], depth)
@@ -141,8 +146,7 @@ class ObjectDetector:
             camera_link_z /= 1000
 
             # Convert the (X, Y, Z) coordinates from camera frame to odom frame
-            # try:
-        while True:
+            try:
                 self.tf_listener.waitForTransform("/odom", "/camera_link", rospy.Time(), rospy.Duration(10.0))
                 point_odom = self.tf_listener.transformPoint("/odom", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/camera_link"), point=Point(camera_link_x, camera_link_y, camera_link_z)))
                 X_odom, Y_odom, Z_odom = point_odom.point.x, point_odom.point.y, point_odom.point.z
@@ -151,16 +155,16 @@ class ObjectDetector:
                 if X_odom < 0.001 and X_odom > -0.001:
                     print("Erroneous goal point, not publishing - Is the cup too close to the camera?")
                 else:
-                print("Publishing goal point: ", X_odom, Y_odom, Z_odom)
-                # Publish the transformed point
-                self.point_pub.publish(Point(X_odom, Y_odom, Z_odom))
+                    print("Publishing goal point: ", X_odom, Y_odom, Z_odom)
+                    # Publish the transformed point
+                    self.point_pub.publish(Point(X_odom, Y_odom, Z_odom))
 
                     # Overlay cup points on color image for visualization
                     cup_img = self.cv_color_image.copy()
                     cup_img[y_coords, x_coords] = [0, 0, 255]  # Highlight cup points in red
-                    cv2.circle(cup_img, (center_x, center_y), 5, [0, 255, 0], -1)  # Draw green circle at center
+                    cv2.circle(cup_img, (closest_object[0], closest_object[1]), 5, [0, 255, 0], -1)  # Draw green circle at center
                     
-                    Convert to ROS Image message and publish
+                    # Convert to ROS Image message and publish
                     ros_image = self.bridge.cv2_to_imgmsg(cup_img, "bgr8")
                     self.image_pub.publish(ros_image)
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
@@ -168,5 +172,4 @@ class ObjectDetector:
                 return
 
 if __name__ == '__main__':
-    # ObjectDetector()
-    ObjectDetector().process_images(self)
+    ObjectDetector()

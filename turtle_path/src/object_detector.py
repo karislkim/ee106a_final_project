@@ -120,12 +120,13 @@ class ObjectDetector:
                 cx = int(M["m10"] / M["m00"])
                 cy = int(M["m01"] / M["m00"])
                 centroids.append((cx, cy))
+        print("CENTROIDS: " + str(centroids))
 
         # TODO: Determine closest object
         closest_object = None
         min_distance = float('inf')
         for cx, cy in centroids:
-            distance = (cx**2 + cy**2)**0.5
+            distance = self.cv_depth_image[cy, cx]
             if distance < min_distance:
                 min_distance = distance
                 closest_object = (cx, cy) # center of closest object

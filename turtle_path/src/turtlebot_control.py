@@ -34,8 +34,6 @@ def controller(waypoint):
   tfBuffer = tf2_ros.Buffer()
   tfListener = tf2_ros.TransformListener(tfBuffer)
 
-  save_starting_position(tfBuffer)
-
   # Create a timer object that will sleep long enough to result in
   # a 10Hz publishing rate
   r = rospy.Rate(10) # 10hz
@@ -43,9 +41,9 @@ def controller(waypoint):
 
   # All in the form [x, y]
   # NOTE: The Turtlebot typically does not need an integral term so we set it to 0 to make this a PD controller
-  Kp = np.diag([2, 0.8]) # TODO: You may need to tune these values for your turtlebot
+  Kp = np.diag([2, 2]) # TODO: You may need to tune these values for your turtlebot
   Kd = np.diag([-0.5, 0.5]) # TODO: You may need to tune these values for your turtlebot
-  Ki = np.diag([-0.1, 0.1])
+  Ki = np.diag([0, 0.5])
 
   prev_time = rospy.get_time() # TODO: initialize your time, what rospy function would be helpful here?
   integ = np.zeros((2, 1), dtype=float) # TODO: initialize an empty np array -- make sure to keep your sizes consistent
@@ -115,7 +113,7 @@ def controller(waypoint):
       prev_time = curr_time
       pub.publish(control_command)
 
-      if np.abs(error[0]) <= 0.02 and np.abs(error[1] <= 0.01) : #TODO: what is our stopping condition/how do we know to go to the next waypoint?
+      if np.abs(error[0]) <= 0.02 and np.abs(error[1] <= 0.07) : #TODO: what is our stopping condition/how do we know to go to the next waypoint?
         print("Moving to next waypoint in trajectory")
         return
 
@@ -125,18 +123,42 @@ def controller(waypoint):
     # Use our rate object to sleep until it is time to publish again
     r.sleep()
 
-def save_starting_position(tfBuffer):
-    global starting_pose
-    try:
-        # Get the transformation from base_footprint to odom
-        start_transform = tfBuffer.lookup_transform("odom", "base_footprint", rospy.Time(), rospy.Duration(5))
-        starting_pose = (
-            start_transform.transform.translation.x,
-            start_transform.transform.translation.y
-        )
-        print(f"Starting position saved: {starting_pose}")
-    except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-        print(f"Error saving starting position: {e}")
+def save_starting_position():
+  global starting_pose
+  try:
+    # Get the transformation from base_footprint to odom
+    # odom is the fixed frame, base_footprint is the robot frame
+    # find the point in the world frame we want to go to and translate it to the robot frame
+    # refer to code in this lab
+    # this function can return the starting pose rather than setting it as a global variable
+    tfBuffer = tf2_ros.Buffer()
+    tfListener = tf2_ros.TransformListener(tfBuffer)
+
+    start_transform = tfBuffer.lookup_transform("odom", "base_footprint", rospy.Time(), rospy.Duration(5))
+    rotation_matrix = tf.transformations.quaternion_matrix([start_transform.transform.rotation.x, 
+                                                            start_transform.transform.rotation.y,
+                                                            start_transform.transform.rotation.z,
+                                                            start_transform.transform.rotation.w])
+    transformation_matrix = np.identity(4)
+    transformation_matrix[:3, :3] = rotation_matrix[:3, :3]
+    transformation_matrix[:3, 3] = [start_transform.transform.translation.x,
+                                    start_transform.transform.translation.y,
+                                    start_transform.transform.translation.z]
+    print("TRANSFORMATION_MATRIX: " + str(transformation_matrix))
+    inverse = np.linalg.inv(transformation_matrix)
+
+
+    starting_pose = np.dot(inverse, np.array([0, 0, 0, 1]))
+    starting_pose = (
+            starting_pose[0],
+            starting_pose[1]
+    )
+    print("STARTING_POSE: " + str(starting_pose))
+    
+    print(f"Starting position saved: {starting_pose}")
+    starting_pose = (starting_pose[0], starting_pose[1])
+  except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+    print(f"Error saving starting position: {e}")
 
 def planning_callback(goal_msg, color_msg):
   try:
@@ -151,6 +173,7 @@ def planning_callback(goal_msg, color_msg):
 
     if object_color:
       print("HELLO")
+      save_starting_position()
       return_trajectory = plan_curved_trajectory(starting_pose)
       for waypoint in return_trajectory:
         controller(waypoint)

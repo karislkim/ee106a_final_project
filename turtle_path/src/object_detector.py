@@ -12,6 +12,7 @@ import time
 import tf
 from geometry_msgs.msg import Point, PointStamped
 from std_msgs.msg import Header
+from std_msgs.msg import Bool
 
 
 PLOTS_DIR = os.path.join(os.getcwd(), 'plots')
@@ -39,6 +40,7 @@ class ObjectDetector:
 
         self.point_pub = rospy.Publisher("goal_point", Point, queue_size=10)
         self.image_pub = rospy.Publisher('detected_cup', Image, queue_size=10)
+        self.color_pub = rospy.Publisher("object_color", Bool, queue_size=10)
 
         rospy.spin()
 
@@ -148,8 +150,9 @@ class ObjectDetector:
             camera_link_z /= 1000
 
             # determine if block is orange or green # TEST THIS ON WEDNESDAY 12/4
-            cx, cy, _ = closest_object
-            is_green = green_mask[cy, cx] > 0
+            center_x, center_y = closest_object
+            is_orange = orange_mask[center_y, center_x] > 0
+            print("IS IT ORANGE: " + str(is_orange))
 
 
             # Convert the (X, Y, Z) coordinates from camera frame to odom frame
@@ -166,10 +169,13 @@ class ObjectDetector:
                     # Publish the transformed point
                     self.point_pub.publish(Point(X_odom, Y_odom, Z_odom))
 
+                    print("Publishing object color (orange?): ", is_orange)
+                    self.color_pub.publish(is_orange)
+
                     # Overlay cup points on color image for visualization
                     cup_img = self.cv_color_image.copy()
                     cup_img[y_coords, x_coords] = [0, 0, 255]  # Highlight cup points in red
-                    cv2.circle(cup_img, (closest_object[0], closest_object[1]), 5, [0, 255, 0], -1)  # Draw green circle at center
+                    cv2.circle(cup_img, (closest_object[0], closest_object[1]), 5, [255, 0, 0], -1)  # Draw green circle at center
                     
                     # Convert to ROS Image message and publish
                     ros_image = self.bridge.cv2_to_imgmsg(cup_img, "bgr8")

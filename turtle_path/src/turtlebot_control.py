@@ -15,6 +15,8 @@ from geometry_msgs.msg import TransformStamped, PoseStamped, Twist, Point
 from tf.transformations import quaternion_from_euler
 from tf2_geometry_msgs import do_transform_pose
 from trajectory import plan_curved_trajectory
+from std_msgs.msg import Bool
+import message_filters
 
 #Define the method which contains the main functionality of the node.
 def controller(waypoint):
@@ -31,6 +33,8 @@ def controller(waypoint):
   ## TODO: what topic should we publish to? how?
   tfBuffer = tf2_ros.Buffer()
   tfListener = tf2_ros.TransformListener(tfBuffer)
+
+  save_starting_position(tfBuffer)
 
   # Create a timer object that will sleep long enough to result in
   # a 10Hz publishing rate
@@ -121,17 +125,38 @@ def controller(waypoint):
     # Use our rate object to sleep until it is time to publish again
     r.sleep()
 
+def save_starting_position(tfBuffer):
+    global starting_pose
+    try:
+        # Get the transformation from base_footprint to odom
+        start_transform = tfBuffer.lookup_transform("odom", "base_footprint", rospy.Time(), rospy.Duration(5))
+        starting_pose = (
+            start_transform.transform.translation.x,
+            start_transform.transform.translation.y
+        )
+        print(f"Starting position saved: {starting_pose}")
+    except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+        print(f"Error saving starting position: {e}")
 
-def planning_callback(msg):
+def planning_callback(goal_msg, color_msg):
   try:
-    trajectory = plan_curved_trajectory((msg.x, msg.y)) # TODO: What is the tuple input to this function?
-    print(trajectory)
+    goal_point = (goal_msg.x, goal_msg.y)
+    object_color = color_msg.data
+
+    trajectory = plan_curved_trajectory(goal_point) # TODO: What is the tuple input to this function?
 
     # TODO: write a loop to loop over our waypoints and call the controller function on each waypoint
-    for i in trajectory:
-      print("THIS IS I: " + str(i))
-      controller(i)
+    for waypoint in trajectory:
+      controller(waypoint)
 
+    if object_color:
+      print("HELLO")
+      return_trajectory = plan_curved_trajectory(starting_pose)
+      for waypoint in return_trajectory:
+        controller(waypoint)
+    else:
+      # go to green pile
+      print('hello')
   except rospy.ROSInterruptException as e:
     print("Exception thrown in planning callback: " + e)
     pass
@@ -148,6 +173,20 @@ if __name__ == '__main__':
   
   rospy.init_node('turtlebot_controller', anonymous=True)
 
-  rospy.Subscriber("/goal_point", Point, planning_callback) # TODO: what are we subscribing to here?
+  # rospy.Subscriber("/goal_point", Point, planning_callback) # TODO: what are we subscribing to here?
+
+  # rospy.Subscriber("/object_color", Bool, planning_callback)
+
+  goal_sub = message_filters.Subscriber("/goal_point", Point)
+  color_sub = message_filters.Subscriber("/object_color", Bool)
+
+  # Synchronize messages with allow_headerless=True
+  ts = message_filters.ApproximateTimeSynchronizer(
+      [goal_sub, color_sub],
+      queue_size=10,
+      slop=0.1,
+      allow_headerless=True  
+  )
+  ts.registerCallback(planning_callback)
   
   rospy.spin()

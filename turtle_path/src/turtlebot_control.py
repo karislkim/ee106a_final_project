@@ -41,9 +41,9 @@ def controller(waypoint):
 
   # All in the form [x, y]
   # NOTE: The Turtlebot typically does not need an integral term so we set it to 0 to make this a PD controller
-  Kp = np.diag([2, 2]) # TODO: You may need to tune these values for your turtlebot
+  Kp = np.diag([2, 0.8]) # TODO: You may need to tune these values for your turtlebot
   Kd = np.diag([-0.5, 0.5]) # TODO: You may need to tune these values for your turtlebot
-  Ki = np.diag([0, 0.5])
+  Ki = np.diag([-0.1, 0.1])
 
   prev_time = rospy.get_time() # TODO: initialize your time, what rospy function would be helpful here?
   integ = np.zeros((2, 1), dtype=float) # TODO: initialize an empty np array -- make sure to keep your sizes consistent
@@ -78,7 +78,6 @@ def controller(waypoint):
         [waypoint_in_base_link.pose.orientation.x, waypoint_in_base_link.pose.orientation.y,
             waypoint_in_base_link.pose.orientation.z, waypoint_in_base_link.pose.orientation.w])
 
-
       curr_time = rospy.get_time()
 
       # some debug output below
@@ -89,7 +88,7 @@ def controller(waypoint):
       # Generate a control command to send to the robot
       x_error = waypoint_in_base_link.pose.position.x
       error = np.array([[x_error], [yaw]])# TODO: what are two values that we can use for this np.array, and what are the dimensions
-      print("ERROR: " + str(np.shape(error)))
+      print("ERROR: " + str(error))
       # proportional term
       proportional = np.dot(Kp, error).squeeze()
       
@@ -105,6 +104,10 @@ def controller(waypoint):
       msg = Twist()
       msg.linear.x = proportional[0] + derivative[0] + integral[0] 
       msg.angular.z = proportional[1] + derivative[1] + integral[1] 
+
+      if np.abs(yaw - waypoint[2]) > np.pi / 2:  # If orientation is reversed
+        msg.linear.x = -msg.linear.x  # Reverse motion direction
+        msg.angular.z += np.pi  # Adjust orientation
 
       control_command = msg
       print(control_command)
@@ -122,6 +125,14 @@ def controller(waypoint):
       pass
     # Use our rate object to sleep until it is time to publish again
     r.sleep()
+
+# def get_current_transform(self):
+#   try:
+#     (trans, rot) = self.listener.lookupTransform("odom", "base_footprint", rospy.Time(), rospy.Duration(5))
+#     translation_matrix = np.eye(4)
+#     translation_matrix[:3, 3] = trans
+#     rotation_matrix = tf.transformations.quaternion_matrix(rot)
+#     return np.dot(translation_matrix, rotation_matrix)
 
 def save_starting_position():
   global starting_pose
@@ -145,14 +156,23 @@ def save_starting_position():
                                     start_transform.transform.translation.y,
                                     start_transform.transform.translation.z]
     print("TRANSFORMATION_MATRIX: " + str(transformation_matrix))
+
     inverse = np.linalg.inv(transformation_matrix)
+
+    inverse_rot_matrix = inverse[:3, :3]
+    inverse_trans = inverse[:3, 3]
+
+    # current_transform = self.get_current_transform
+    # relative_transform = np.dot(np.linalg.inv(self.initial_transform), current_transform)
 
 
     starting_pose = np.dot(inverse, np.array([0, 0, 0, 1]))
-    starting_pose = (
-            starting_pose[0],
-            starting_pose[1]
-    )
+
+
+    # starting_pose = (
+    #         starting_pose[0],
+    #         starting_pose[1]
+    # )
     print("STARTING_POSE: " + str(starting_pose))
     
     print(f"Starting position saved: {starting_pose}")

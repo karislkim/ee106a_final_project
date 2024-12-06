@@ -43,7 +43,7 @@ def controller(waypoint):
   # NOTE: The Turtlebot typically does not need an integral term so we set it to 0 to make this a PD controller
   Kp = np.diag([2, 0.8]) # TODO: You may need to tune these values for your turtlebot
   Kd = np.diag([-0.5, 0.5]) # TODO: You may need to tune these values for your turtlebot
-  Ki = np.diag([-0.1, 0.1])
+  Ki = np.diag([0, 0])
 
   prev_time = rospy.get_time() # TODO: initialize your time, what rospy function would be helpful here?
   integ = np.zeros((2, 1), dtype=float) # TODO: initialize an empty np array -- make sure to keep your sizes consistent
@@ -105,9 +105,14 @@ def controller(waypoint):
       msg.linear.x = proportional[0] + derivative[0] + integral[0] 
       msg.angular.z = proportional[1] + derivative[1] + integral[1] 
 
-      if np.abs(yaw - waypoint[2]) > np.pi / 2:  # If orientation is reversed
-        msg.linear.x = -msg.linear.x  # Reverse motion direction
-        msg.angular.z += np.pi  # Adjust orientation
+      if returning:  # If orientation is reversed
+        print("RETURNING NOW")
+        # msg.linear.x = -msg.linear.x  # Reverse motion direction
+        # msg.angular.z += np.pi  # Adjust orientation
+
+      if np.abs(error[1]) < 0.05:
+        msg.angular.z = 0.0
+
 
       control_command = msg
       print(control_command)
@@ -116,8 +121,9 @@ def controller(waypoint):
       prev_time = curr_time
       pub.publish(control_command)
 
-      if np.abs(error[0]) <= 0.02 and np.abs(error[1] <= 0.07) : #TODO: what is our stopping condition/how do we know to go to the next waypoint?
+      if np.abs(error[0]) <= 0.03 and np.abs(error[1]) <= 0.2: #TODO: what is our stopping condition/how do we know to go to the next waypoint?
         print("Moving to next waypoint in trajectory")
+        # import pdb; pdb.set_trace()
         return
 
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
@@ -125,14 +131,6 @@ def controller(waypoint):
       pass
     # Use our rate object to sleep until it is time to publish again
     r.sleep()
-
-# def get_current_transform(self):
-#   try:
-#     (trans, rot) = self.listener.lookupTransform("odom", "base_footprint", rospy.Time(), rospy.Duration(5))
-#     translation_matrix = np.eye(4)
-#     translation_matrix[:3, 3] = trans
-#     rotation_matrix = tf.transformations.quaternion_matrix(rot)
-#     return np.dot(translation_matrix, rotation_matrix)
 
 def save_starting_position():
   global starting_pose
@@ -145,7 +143,7 @@ def save_starting_position():
     tfBuffer = tf2_ros.Buffer()
     tfListener = tf2_ros.TransformListener(tfBuffer)
 
-    start_transform = tfBuffer.lookup_transform("odom", "base_footprint", rospy.Time(), rospy.Duration(5))
+    start_transform = tfBuffer.lookup_transform("base_footprint", "odom", rospy.Time(), rospy.Duration(5))
     rotation_matrix = tf.transformations.quaternion_matrix([start_transform.transform.rotation.x, 
                                                             start_transform.transform.rotation.y,
                                                             start_transform.transform.rotation.z,
@@ -157,22 +155,13 @@ def save_starting_position():
                                     start_transform.transform.translation.z]
     print("TRANSFORMATION_MATRIX: " + str(transformation_matrix))
 
-    inverse = np.linalg.inv(transformation_matrix)
+    # inverse = np.linalg.inv(transformation_matrix)
 
-    inverse_rot_matrix = inverse[:3, :3]
-    inverse_trans = inverse[:3, 3]
+    # inverse_rot_matrix = inverse[:3, :3]
+    # inverse_trans = inverse[:3, 3]
 
-    # current_transform = self.get_current_transform
-    # relative_transform = np.dot(np.linalg.inv(self.initial_transform), current_transform)
+    starting_pose = np.dot(transformation_matrix, np.array([0, 0, 0, 1]))
 
-
-    starting_pose = np.dot(inverse, np.array([0, 0, 0, 1]))
-
-
-    # starting_pose = (
-    #         starting_pose[0],
-    #         starting_pose[1]
-    # )
     print("STARTING_POSE: " + str(starting_pose))
     
     print(f"Starting position saved: {starting_pose}")
@@ -181,6 +170,7 @@ def save_starting_position():
     print(f"Error saving starting position: {e}")
 
 def planning_callback(goal_msg, color_msg):
+  global returning
   try:
     goal_point = (goal_msg.x, goal_msg.y)
     object_color = color_msg.data
@@ -188,10 +178,12 @@ def planning_callback(goal_msg, color_msg):
     trajectory = plan_curved_trajectory(goal_point) # TODO: What is the tuple input to this function?
 
     # TODO: write a loop to loop over our waypoints and call the controller function on each waypoint
+    returning = False
     for waypoint in trajectory:
       controller(waypoint)
 
     if object_color:
+      returning = True
       print("HELLO")
       save_starting_position()
       return_trajectory = plan_curved_trajectory(starting_pose)

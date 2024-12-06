@@ -105,14 +105,8 @@ def controller(waypoint):
       msg.linear.x = proportional[0] + derivative[0] + integral[0] 
       msg.angular.z = proportional[1] + derivative[1] + integral[1] 
 
-      if returning:  # If orientation is reversed
-        print("RETURNING NOW")
-        # msg.linear.x = -msg.linear.x  # Reverse motion direction
-        # msg.angular.z += np.pi  # Adjust orientation
-
-      if np.abs(error[1]) < 0.05:
-        msg.angular.z = 0.0
-
+      if returning: 
+        print("RETURNING NOW") # this is just a debugging print statement
 
       control_command = msg
       print(control_command)
@@ -155,11 +149,6 @@ def save_starting_position():
                                     start_transform.transform.translation.z]
     print("TRANSFORMATION_MATRIX: " + str(transformation_matrix))
 
-    # inverse = np.linalg.inv(transformation_matrix)
-
-    # inverse_rot_matrix = inverse[:3, :3]
-    # inverse_trans = inverse[:3, 3]
-
     starting_pose = np.dot(transformation_matrix, np.array([0, 0, 0, 1]))
 
     print("STARTING_POSE: " + str(starting_pose))
@@ -184,14 +173,18 @@ def planning_callback(goal_msg, color_msg):
 
     if object_color:
       returning = True
-      print("HELLO")
+      print("Approached Orange Block")
       save_starting_position()
       return_trajectory = plan_curved_trajectory(starting_pose)
       for waypoint in return_trajectory:
         controller(waypoint)
     else:
       # go to green pile
-      print('hello')
+      print('Approached Green Block')
+      save_starting_position()
+      return_trajectory = plan_curved_trajectory(starting_pose)
+      for waypoint in return_trajectory:
+        controller(waypoint)
   except rospy.ROSInterruptException as e:
     print("Exception thrown in planning callback: " + e)
     pass

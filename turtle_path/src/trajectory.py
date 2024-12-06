@@ -97,56 +97,9 @@ def plan_curved_trajectory(target_position):
 
     waypoints = generate_bezier_waypoints(x1, y1, yaw, x2, y2, yaw, offset=0.2, num_points=10)
     plot_trajectory(waypoints)
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 
     return waypoints
-
-# def generate_linear_trajectory(x1, y1, theta1, x2, y2, num_points=10):
-#     """
-#     Generate a straight-line trajectory from start (x1, y1) to end (x2, y2).
-#     """
-#     x_vals = np.linspace(x1, x2, num_points)
-#     y_vals = np.linspace(y1, y2, num_points)
-#     theta_vals = [theta1] * (num_points - 1)  # Maintain initial orientation during translation
-#     theta_vals.append(np.arctan2(y2 - y1, x2 - x1))  # Adjust orientation at the final point
-
-#     return [(x, y, theta) for x, y, theta in zip(x_vals, y_vals, theta_vals)]
-
-
-# def plan_straight_then_orient_trajectory(target_position):
-#     """
-#     Plan a trajectory where the robot first translates to the goal point and then reorients itself.
-#     """
-#     tfBuffer = tf2_ros.Buffer()
-#     tfListener = tf2_ros.TransformListener(tfBuffer)
-#     while not rospy.is_shutdown():
-#         try:
-#             trans = tfBuffer.lookup_transform("odom", "base_footprint", rospy.Time(), rospy.Duration(5)) 
-#             print(trans)
-#             break
-#         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
-#             print("TF Error: " + str(e))
-#             continue
-
-#     # Current position and orientation
-#     x1, y1 = trans.transform.translation.x, trans.transform.translation.y
-#     (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(
-#         [trans.transform.rotation.x, trans.transform.rotation.y,
-#          trans.transform.rotation.z, trans.transform.rotation.w])
-    
-#     # Target position in world coordinates
-#     x2 = x1 + target_position[0] * np.cos(yaw) - target_position[1] * np.sin(yaw)
-#     y2 = y1 + target_position[0] * np.sin(yaw) + target_position[1] * np.cos(yaw)
-
-#     # Generate trajectory
-#     waypoints_translation = generate_linear_trajectory(x1, y1, yaw, x2, y2)
-#     waypoints_orientation = [(x2, y2, np.arctan2(y2 - y1, x2 - x1))]  # Final reorientation at goal
-    
-#     # Combine waypoints
-#     waypoints = waypoints_translation + waypoints_orientation
-#     plot_trajectory(waypoints)
-
-#     return waypoints
 
 if __name__ == '__main__':
     rospy.init_node('turtlebot_controller', anonymous=True)

@@ -18,6 +18,26 @@ from trajectory import plan_curved_trajectory
 from std_msgs.msg import Bool
 import message_filters
 
+patrolling = True
+def patrol():
+    """
+    Controls the TurtleBot to patrol predefined waypoints.
+    """
+    waypoints = [
+        [.3, 0.0, 0.0],
+        [0.0, .3, np.pi/2],
+        [-.3, 0.0, np.pi],
+        [0.0, -.3, -np.pi/2]
+    ]  # Waypoints for patrolling a square
+
+    rospy.loginfo("Patrolling started.")
+    print("Patrolling Started")
+    while not rospy.is_shutdown() and patrolling:
+        for waypoint in waypoints:
+            rospy.loginfo(f"Patrolling to waypoint: {waypoint}")
+            controller(waypoint)
+
+
 #Define the method which contains the main functionality of the node.
 def controller(waypoint):
   """
@@ -105,11 +125,11 @@ def controller(waypoint):
       msg.linear.x = proportional[0] + derivative[0] + integral[0] 
       msg.angular.z = proportional[1] + derivative[1] + integral[1] 
 
-      if returning: 
-        print("RETURNING NOW") # this is just a debugging print statement
+      # if returning: 
+      #   print("RETURNING NOW") # this is just a debugging print statement
 
       control_command = msg
-      print(control_command)
+      print(control_command) 
 
       previous_error = error  # TODO
       prev_time = curr_time
@@ -161,6 +181,7 @@ def save_starting_position():
 def planning_callback(goal_msg, color_msg):
   global returning
   try:
+    patrolling = False
     goal_point = (goal_msg.x, goal_msg.y)
     object_color = color_msg.data
 
@@ -185,6 +206,8 @@ def planning_callback(goal_msg, color_msg):
       return_trajectory = plan_curved_trajectory(starting_pose)
       for waypoint in return_trajectory:
         controller(waypoint)
+    rospy.loginfo("Goal reached, resuming patrol.")
+    patrolling = True
   except rospy.ROSInterruptException as e:
     print("Exception thrown in planning callback: " + e)
     pass
@@ -216,5 +239,7 @@ if __name__ == '__main__':
       allow_headerless=True  
   )
   ts.registerCallback(planning_callback)
+
+  patrol_thread = rospy.Timer(rospy.Duration(5), lambda _: patrol() if patrolling else None)
   
   rospy.spin()

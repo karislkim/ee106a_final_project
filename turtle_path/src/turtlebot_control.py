@@ -18,25 +18,77 @@ from trajectory import plan_curved_trajectory
 from std_msgs.msg import Bool
 import message_filters
 
-patrolling = True
-def patrol():
-    """
-    Controls the TurtleBot to patrol predefined waypoints.
-    """
-    waypoints = [
-        [.3, 0.0, 0.0],
-        [0.0, .3, np.pi/2],
-        [-.3, 0.0, np.pi],
-        [0.0, -.3, -np.pi/2]
-    ]  # Waypoints for patrolling a square
+patrolling = False
+def patrol(stop_condition):
+    
+    cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+    rate = rospy.Rate(10)  # 10 Hz update rate
 
-    rospy.loginfo("Patrolling started.")
-    print("Patrolling Started")
-    while not rospy.is_shutdown() and patrolling:
-        for waypoint in waypoints:
-            rospy.loginfo(f"Patrolling to waypoint: {waypoint}")
-            controller(waypoint)
+    # Rectangle parameters
+    forward_speed = 0.1  # Speed while moving forward (m/s)
+    turn_speed = 0.5  # Angular speed (rad/s)
+    length = 1.4  # Length of the rectangle (meters)
+    width = 0.15  # Width of the rectangle (meters)
 
+    # Move the robot in a rectangular path
+    while not stop_condition:
+        # Move forward along the longer side (length)
+        move_straight(forward_speed, length, cmd_vel_pub)
+        
+        # Turn 90 degrees
+        turn_90_degrees(turn_speed, cmd_vel_pub)
+        
+        # Move forward along the shorter side (width)
+        move_straight(forward_speed, width, cmd_vel_pub)
+        
+        # Turn 90 degrees again
+        turn_90_degrees(turn_speed, cmd_vel_pub)
+        
+        # Repeat the rectangle
+        move_straight(forward_speed, length, cmd_vel_pub)
+        turn_90_degrees(turn_speed, cmd_vel_pub)
+        
+        move_straight(forward_speed, width, cmd_vel_pub)
+        turn_90_degrees(turn_speed, cmd_vel_pub)
+        
+        rospy.loginfo("Completed one rectangle path.")
+        rospy.sleep(2)  # Pause briefly before restarting
+       
+
+
+def move_straight(speed, distance, cmd_vel_pub):
+    # Move forward for a set distance
+    move_cmd = Twist()
+    move_cmd.linear.x = speed
+
+    # Time to travel the given distance (assuming speed = distance/time)
+    travel_time = distance / speed
+    start_time = rospy.get_time()
+
+    while rospy.get_time() - start_time < travel_time:
+        cmd_vel_pub.publish(move_cmd)
+        rospy.sleep(0.1)  # Publish at 10Hz
+
+    # Stop moving
+    move_cmd.linear.x = 0
+    cmd_vel_pub.publish(move_cmd)
+
+def turn_90_degrees(turn_speed, cmd_vel_pub):
+    # Turn 90 degrees (in radians)
+    turn_cmd = Twist()
+    turn_cmd.angular.z = turn_speed
+
+    # Time to turn 90 degrees (assuming speed = distance/time and angular distance for 90 degrees = pi/2 radians)
+    turn_time = 1.57 / turn_speed  # 1.57 rad = 90 degrees
+    start_time = rospy.get_time()
+
+    while rospy.get_time() - start_time < turn_time:
+        cmd_vel_pub.publish(turn_cmd)
+        rospy.sleep(0.1)  # Publish at 10Hz
+
+    # Stop turning
+    turn_cmd.angular.z = 0
+    cmd_vel_pub.publish(turn_cmd)
 
 #Define the method which contains the main functionality of the node.
 def controller(waypoint):
@@ -207,11 +259,26 @@ def planning_callback(goal_msg, color_msg):
       for waypoint in return_trajectory:
         controller(waypoint)
     rospy.loginfo("Goal reached, resuming patrol.")
-    patrolling = True
+    #patrolling = False
   except rospy.ROSInterruptException as e:
     print("Exception thrown in planning callback: " + e)
     pass
       
+
+def patrol_callback(should_patrol_msg):
+  
+  if should_patrol_msg:
+    patrolling = True
+    print(f"Should be patrolling?: {should_patrol_msg.data}")
+    patrol(False)
+  else: 
+    patrolling = False
+    patrol(True)
+    print(f"Should NOT be patrolling")
+
+
+
+
 
 # This is Python's sytax for a main() method, which is run by default
 # when exectued in the shell
@@ -223,23 +290,27 @@ if __name__ == '__main__':
   #called /turtlebot_controller.
   
   rospy.init_node('turtlebot_controller', anonymous=True)
-
+  
   # rospy.Subscriber("/goal_point", Point, planning_callback) # TODO: what are we subscribing to here?
 
   # rospy.Subscriber("/object_color", Bool, planning_callback)
 
   goal_sub = message_filters.Subscriber("/goal_point", Point)
   color_sub = message_filters.Subscriber("/object_color", Bool)
+  should_patrol = rospy.Subscriber("/topic_monitor", Bool, patrol_callback)
 
-  # Synchronize messages with allow_headerless=True
-  ts = message_filters.ApproximateTimeSynchronizer(
-      [goal_sub, color_sub],
-      queue_size=10,
-      slop=0.1,
-      allow_headerless=True  
-  )
-  ts.registerCallback(planning_callback)
+  
+  while not patrolling:
 
-  patrol_thread = rospy.Timer(rospy.Duration(5), lambda _: patrol() if patrolling else None)
+    # Synchronize messages with allow_headerless=True
+    ts = message_filters.ApproximateTimeSynchronizer(
+        [goal_sub, color_sub],
+        queue_size=10,
+        slop=0.1,
+        allow_headerless=True  
+    )
+    ts.registerCallback(planning_callback)
+
+  # patrol_thread = rospy.Timer(rospy.Duration(1), lambda _: patrol() if patrolling else None)
   
   rospy.spin()

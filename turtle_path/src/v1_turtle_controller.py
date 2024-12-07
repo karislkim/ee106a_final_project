@@ -8,10 +8,10 @@ def move_rectangle():
     rate = rospy.Rate(10)  # 10 Hz update rate
 
     # Rectangle parameters
-    forward_speed = 0.1  # Speed while moving forward (m/s)
-    turn_speed = 0.5  # Angular speed (rad/s)
-    length = 1.4  # Length of the rectangle (meters)
-    width = 0.15  # Width of the rectangle (meters)
+    forward_speed = 0.1  
+    turn_speed = 0.5  
+    length = 1.4  
+    width = 0.15  
 
     # Move the robot in a rectangular path
     while not rospy.is_shutdown():

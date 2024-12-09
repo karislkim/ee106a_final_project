@@ -53,7 +53,7 @@ def patrol(stop_condition):
         
         rospy.loginfo("Completed one rectangle path.")
         rospy.sleep(2)  # Pause briefly before restarting
-       
+
 
 
 def move_straight(speed, distance, cmd_vel_pub):
@@ -258,6 +258,7 @@ def planning_callback(goal_msg, color_msg):
       return_trajectory = plan_curved_trajectory(starting_pose)
       for waypoint in return_trajectory:
         controller(waypoint)
+
     rospy.loginfo("Goal reached, resuming patrol.")
     #patrolling = False
   except rospy.ROSInterruptException as e:
@@ -267,7 +268,7 @@ def planning_callback(goal_msg, color_msg):
 
 def patrol_callback(should_patrol_msg):
   
-  if should_patrol_msg:
+  if should_patrol_msg.data:
     patrolling = True
     print(f"Should be patrolling?: {should_patrol_msg.data}")
     patrol(False)
@@ -299,8 +300,8 @@ if __name__ == '__main__':
   color_sub = message_filters.Subscriber("/object_color", Bool)
   should_patrol = rospy.Subscriber("/topic_monitor", Bool, patrol_callback)
 
-  
-  while not patrolling:
+  print("PATROLLING: " + str(patrolling))
+  if not patrolling:
 
     # Synchronize messages with allow_headerless=True
     ts = message_filters.ApproximateTimeSynchronizer(

@@ -14,7 +14,7 @@ class TopicMonitor:
         self.sub = rospy.Subscriber("/goal_point", Point, self.callback)
         self.is_pub = rospy.Publisher("topic_monitor", Bool, queue_size=10)
         # Timer to check for timeouts
-        self.timer = rospy.Timer(rospy.Duration(1), self.check_timeout)
+        self.timer = rospy.Timer(rospy.Duration(5), self.check_timeout)
         
         rospy.loginfo("Topic monitor initialized.")
 
@@ -33,7 +33,7 @@ class TopicMonitor:
             print(f"publishing_to_gpt: {not_publishing_to_gpt}")
             self.handle_timeout()
         else:
-            self.is_pub.publish(publishing_to_gpt)
+            self.is_pub.publish(not_publishing_to_gpt)
             rospy.loginfo("Messages are being published.")
 
     def handle_timeout(self):

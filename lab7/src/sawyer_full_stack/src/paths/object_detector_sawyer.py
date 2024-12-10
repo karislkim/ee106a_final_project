@@ -10,10 +10,11 @@ import matplotlib.pyplot as plt
 import os
 import time
 import tf
-from geometry_msgs.msg import Point, PointStamped
+from geometry_msgs.msg import Point, PointStamped, PoseStamped
 from std_msgs.msg import Header
 from std_msgs.msg import Bool
-
+import tf2_geometry_msgs
+import tf2_ros
 
 PLOTS_DIR = os.path.join(os.getcwd(), 'plots')
 
@@ -41,6 +42,8 @@ class ObjectDetector:
         self.point_pub = rospy.Publisher("goal_point", Point, queue_size=10)
         self.image_pub = rospy.Publisher('detected_cup', Image, queue_size=10)
         # self.color_pub = rospy.Publisher("object_color", Bool, queue_size=10)
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
         rospy.spin()
 
@@ -51,7 +54,7 @@ class ObjectDetector:
         self.cx = msg.K[2]
         self.cy = msg.K[5]
 
-    def pixel_to_point(self, u, v, depth=0.2):
+    def pixel_to_point(self, u, v, depth=0.46):
         # TODO: Use the camera intrinsics to convert pixel coordinates to real-world coordinates
         X = (u - self.cx) * depth / self.fx
         Y = (v - self.cy) * depth / self.fy
@@ -148,25 +151,39 @@ class ObjectDetector:
         # depth = self.cv_depth_image[closest_object[1], closest_object[0]]
         # is_green = None
 
+
         if self.fx and self.fy and self.cx and self.cy:
             camera_x, camera_y, camera_z = self.pixel_to_point(center_x, center_y)
-            camera_link_x, camera_link_y, camera_link_z = camera_z, -camera_x, -camera_y
+            # # camera_link_x, camera_link_y, camera_link_z = camera_z, -camera_x, -camera_y
+            # camera_link_x, camera_link_y, camera_link_z = camera_y, -camera_x, -camera_z
             # Convert from mm to m
-            camera_link_x /= 1000
-            camera_link_y /= 1000
-            camera_link_z /= 1000
-
-            # determine if block is orange or green # TEST THIS ON WEDNESDAY 12/4
-            # center_x, center_y = closest_object
-            # is_orange = orange_mask[center_y, center_x] > 0
-            # print("IS IT ORANGE: " + str(is_orange))
-
+            # camera_link_x /= 1000
+            # camera_link_y /= 1000
+            # camera_link_z /= 1000
+            # print("CAMERA LINK VALS: " + str(camera_link_x) + ", " + str(camera_link_y) + ", " + str(camera_link_z))
 
             # Convert the (X, Y, Z) coordinates from camera frame to odom frame
             try:
-                self.tf_listener.waitForTransform("/base", "/right_hand_camera", rospy.Time(), rospy.Duration(10.0))
-                point_odom = self.tf_listener.transformPoint("/base", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/right_hand_camera"), point=Point(camera_link_x, camera_link_y, camera_link_z)))
-                X_odom, Y_odom, Z_odom = point_odom.point.x, point_odom.point.y, point_odom.point.z
+                pose_camera = PoseStamped()
+                pose_camera.header.frame_id = "right_hand_camera"
+                pose_camera.pose.position.x = camera_x
+                pose_camera.pose.position.y = camera_y
+                pose_camera.pose.position.z = camera_z
+
+                # Transform to base frame
+                transform = self.tf_buffer.lookup_transform("base", "right_hand_camera", rospy.Time(0), rospy.Duration(1.0))
+                pose_base = tf2_geometry_msgs.do_transform_pose(pose_camera, transform)
+
+                # Extract transformed coordinates
+                X_odom = pose_base.pose.position.x
+                Y_odom = pose_base.pose.position.y
+                Z_odom = pose_base.pose.position.z
+                # self.tf_listener.waitForTransform("/base", "/right_hand_camera", rospy.Time(), rospy.Duration(10.0))
+                
+
+                # point_odom = self.tf_listener.transformPoint("/base", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/right_hand_camera"), point=Point(camera_link_x, camera_link_y, camera_link_z)))
+                # X_odom, Y_odom, Z_odom = point_odom.point.x, point_odom.point.y, point_odom.point.z
+                X_odom, Y_odom, Z_odom = pose_base.pose.position.x, pose_base.pose.position.y, pose_base.pose.position.z
                 print("Real-world coordinates in odom frame: (X, Y, Z) = ({:.2f}m, {:.2f}m, {:.2f}m)".format(X_odom, Y_odom, Z_odom))
 
                 if X_odom < 0.001 and X_odom > -0.001:
@@ -184,14 +201,15 @@ class ObjectDetector:
                     cup_img = cv2.cvtColor(cup_img, cv2.COLOR_GRAY2BGR)
 
                     cup_img[y_coords, x_coords] = [0, 0, 255]  # Highlight cup points in red
-                    cv2.circle(cup_img, (closest_object[0], closest_object[1]), 5, [255, 0, 0], -1)  # Draw green circle at center
+                    cv2.circle(cup_img, (closest_object[0], closest_object[1]), 5, [0, 255, 0], -1)  # Draw blue circle at center
+                    cv2.circle(cup_img, (0,0), 5, [255, 0, 0], -1)
                     # Convert to ROS Image message and publish
 
                     ros_image = self.bridge.cv2_to_imgmsg(cup_img, "bgr8")
      
                     self.image_pub.publish(ros_image)
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
-                print("TF Error: " + e)
+                print("TF Error: " + str(e))
                 return
 
 if __name__ == '__main__':

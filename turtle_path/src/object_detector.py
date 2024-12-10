@@ -111,7 +111,6 @@ class ObjectDetector:
         # If there are no detected points, exit
         if len(x_coords) == 0 or len(y_coords) == 0:
              print("No points detected. Is your color filter wrong?")
-
              return
 
         # TODO: Find contours after mask is applied to image

@@ -18,6 +18,7 @@ class TopicMonitor:
         self.timer = rospy.Timer(rospy.Duration(1), self.check_timeout)
         
         rospy.loginfo("Topic monitor initialized.")
+        self.is_pub.publish(True)
 
     def callback(self, msg):
         # Update the timestamp whenever a message is received
@@ -25,16 +26,17 @@ class TopicMonitor:
         self.last_received_time = rospy.Time.now()
 
     def check_timeout(self, event):
-        
-        # Check if timeout has occurred
-        time_since_last_msg = (rospy.Time.now() - self.last_received_time).to_sec()
-        not_publishing_to_gpt = time_since_last_msg > self.timeout_duration
-        self.is_pub.publish(not_publishing_to_gpt) # publish state
-        
+
         if self.last_received_time is None:
             rospy.logwarn("No messages received on /goal_point yet!")
             self.is_pub.publish(True)
             return
+        
+        # Check if timeout has occurred
+        time_since_last_msg = rospy.get_time() - self.last_received_time
+        not_publishing_to_gpt = time_since_last_msg > self.timeout_duration
+        self.is_pub.publish(not_publishing_to_gpt) # publish state
+        
             
         if not_publishing_to_gpt:
             rospy.logwarn("No messages received on /goal_point within timeout duration!")

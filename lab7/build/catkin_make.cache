@@ -1,2 +1,2 @@
 ar_track_alvar/ar_track_alvar:ar_track_alvar/ar_track_alvar_msgs:baxter_pykdl:sawyer_full_stack
--DCATKIN_DEVEL_PREFIX=/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/lab7/devel -DCMAKE_INSTALL_PREFIX=/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/lab7/install -G Unix Makefiles
+-DCATKIN_DEVEL_PREFIX=/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/ee106a_final_project/lab7/devel -DCMAKE_INSTALL_PREFIX=/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/ee106a_final_project/lab7/install -G Unix Makefiles

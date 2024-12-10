@@ -286,10 +286,10 @@ if __name__ == '__main__':
 
   rospy.init_node('turtlebot_controller', anonymous=True)
     
-    rospy.loginfo("waiting for first message from topic monitor...")
-    first_msg = rospy.wait_for_message('/topic_monitor', Bool)
-    patrolling = first_msg.data
-    rospy.loginfo(f"initial patrolling state: {patrolling}")
+  rospy.loginfo("waiting for first message from topic monitor...")
+  first_msg = rospy.wait_for_message('/topic_monitor', Bool)
+  patrolling = first_msg.data
+  rospy.loginfo(f"initial patrolling state: {patrolling}")
 
     #patrol timer
     ##rospy.Timer(rospy.Duration(1), patrol_timer_callback)
@@ -302,13 +302,13 @@ if __name__ == '__main__':
   should_patrol = rospy.Subscriber("/topic_monitor", Bool, patrol_callback)
 
 # Synchronize messages with allow_headerless=True
-    ts = message_filters.ApproximateTimeSynchronizer(
-        [goal_sub, color_sub],
-        queue_size=10,
-        slop=0.1,
-        allow_headerless=True  
-    )
-    ts.registerCallback(planning_callback)
+  ts = message_filters.ApproximateTimeSynchronizer(
+      [goal_sub, color_sub],
+      queue_size=10,
+      slop=0.1,
+      allow_headerless=True  
+  )
+  ts.registerCallback(planning_callback)
 
   # patrol_thread = rospy.Timer(rospy.Duration(1), lambda _: patrol() if patrolling else None)
   

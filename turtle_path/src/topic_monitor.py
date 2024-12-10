@@ -7,19 +7,20 @@ class TopicMonitor:
         rospy.init_node("topic_monitor")
         
         # Parameters
-        self.timeout_duration = 2.0  # Seconds
+        self.timeout_duration = 1.0  # Seconds
         self.last_received_time = None
         ## self.last_received_time = rospy.Time.now()
         
         # Subscriber to the topic
-        self.sub = rospy.Subscriber("/goal_point", Point, self.callback)
+
+        self.sub = rospy.Subscriber("/goal_point", Point, self.callback)     
         self.is_pub = rospy.Publisher("topic_monitor", Bool, queue_size=10)
         # Timer to check for timeouts
         self.timer = rospy.Timer(rospy.Duration(1), self.check_timeout)
         
         rospy.loginfo("Topic monitor initialized.")
         self.is_pub.publish(True)
-
+check
     def callback(self, msg):
         # Update the timestamp whenever a message is received
         rospy.loginfo(f"Received message: {msg}")

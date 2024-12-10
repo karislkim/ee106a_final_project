@@ -17,12 +17,65 @@ from tf2_geometry_msgs import do_transform_pose
 from trajectory import plan_curved_trajectory
 from std_msgs.msg import Bool
 import message_filters
+import threading
 
-patrolling = False
-#patrol_started = False 
+goal_received = False
+goal_message = None
+color_message = None
+lock = threading.Lock()
+
+def topic_monitor():
+  def planning_callback(goal_msg, color_msg):
+    global returning
+    try:
+      with lock:
+        goal_point = (goal_msg.x, goal_msg.y)
+        object_color = color_msg.data
+
+        trajectory = plan_curved_trajectory(goal_point) # TODO: What is the tuple input to this function?
+
+        # TODO: write a loop to loop over our waypoints and call the controller function on each waypoint
+        returning = False
+        for waypoint in trajectory:
+          controller(waypoint)
+
+        if object_color:
+          returning = True
+          print("Approached Orange Block")
+          save_starting_position()
+          return_trajectory = plan_curved_trajectory(starting_pose)
+          for waypoint in return_trajectory:
+            controller(waypoint)
+        else:
+          # go to green pile
+          print('Approached Green Block')
+          save_starting_position()
+          return_trajectory = plan_curved_trajectory(starting_pose)
+          for waypoint in return_trajectory:
+            controller(waypoint)
+
+        rospy.loginfo("Goal reached, resuming patrol.")
+        #patrolling = False
+        goal_received = False
+    except rospy.ROSInterruptException as e:
+      print("Exception thrown in planning callback: " + e)
+      pass
+
+    rospy.Subscriber("/goal_point", Point)
+    rospy.Subscriber("/orange_block", Bool)
+    ts = message_filters.ApproximateTimeSynchronizer(
+        [goal_sub, color_sub],
+        queue_size=10,
+        slop=0.1,
+        allow_headerless=True  
+    )
+    ts.registerCallback(planning_callback)
+    rospy.spin()
+
 
 def patrol():
-    global patrolling
+
+    global goal_received
     cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     rate = rospy.Rate(10)  # 10 Hz update rate
 
@@ -31,34 +84,31 @@ def patrol():
     length = 1.4  # Length of the rectangle (meters)
     width = 0.15  # Width of the rectangle (meters)
 
+    rospy.loginfo("Starting patrol...")
     # Move the robot in a rectangular path
     while not rospy.is_shutdown():
-        if patrolling:
-            rospy.loginfo("patrolling")
-        
-            # Move forward along the longer side (length)
-            move_straight(forward_speed, length, cmd_vel_pub)
-            
-            # Turn 90 degrees
-            turn_90_degrees(turn_speed, cmd_vel_pub)
-            
-            # Move forward along the shorter side (width)
-            move_straight(forward_speed, width, cmd_vel_pub)
-            
-            # Turn 90 degrees again
-            turn_90_degrees(turn_speed, cmd_vel_pub)
-            
-            # Repeat the rectangle
-            move_straight(forward_speed, length, cmd_vel_pub)
-            turn_90_degrees(turn_speed, cmd_vel_pub)
-            
-            move_straight(forward_speed, width, cmd_vel_pub)
-            turn_90_degrees(turn_speed, cmd_vel_pub)
+      with lock:
+        if goal_received:
+          rospy.loginfo("Goal detected, stopping patrol.")
+          #trajectory_detec(goal_message,color_message)
+          
+          return
 
-            rate.sleep()
-        else:
-            rospy.loginfo("patrolling off")
-            rospy.sleep(1)
+      rospy.loginfo("patrolling")
+  
+      # Move forward along the longer side (length)
+      move_straight(forward_speed, length, cmd_vel_pub)
+      
+      # Turn 90 degrees
+      turn_90_degrees(turn_speed, cmd_vel_pub)
+      
+      # Move forward along the shorter side (width)
+      move_straight(forward_speed, width, cmd_vel_pub)
+      
+      # Turn 90 degrees again
+      turn_90_degrees(turn_speed, cmd_vel_pub)
+      
+      rate.sleep()
 
 
 def move_straight(speed, distance, cmd_vel_pub):
@@ -235,81 +285,54 @@ def save_starting_position():
   except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
     print(f"Error saving starting position: {e}")
 
-def planning_callback(goal_msg, color_msg):
-  global returning
-  try:
-    patrolling = False
-    goal_point = (goal_msg.x, goal_msg.y)
-    object_color = color_msg.data
+# def trajectory_detec(goal_msg, color_msg):
+#   global returning
+#   try:
+#     goal_point = (goal_msg.x, goal_msg.y)
+#     object_color = color_msg.data
 
-    trajectory = plan_curved_trajectory(goal_point) # TODO: What is the tuple input to this function?
+#     trajectory = plan_curved_trajectory(goal_point) # TODO: What is the tuple input to this function?
 
-    # TODO: write a loop to loop over our waypoints and call the controller function on each waypoint
-    returning = False
-    for waypoint in trajectory:
-      controller(waypoint)
+#     # TODO: write a loop to loop over our waypoints and call the controller function on each waypoint
+#     returning = False
+#     for waypoint in trajectory:
+#       controller(waypoint)
 
-    if object_color:
-      returning = True
-      print("Approached Orange Block")
-      save_starting_position()
-      return_trajectory = plan_curved_trajectory(starting_pose)
-      for waypoint in return_trajectory:
-        controller(waypoint)
-    else:
-      # go to green pile
-      print('Approached Green Block')
-      save_starting_position()
-      return_trajectory = plan_curved_trajectory(starting_pose)
-      for waypoint in return_trajectory:
-        controller(waypoint)
+#     if object_color:
+#       returning = True
+#       print("Approached Orange Block")
+#       save_starting_position()
+#       return_trajectory = plan_curved_trajectory(starting_pose)
+#       for waypoint in return_trajectory:
+#         controller(waypoint)
+#     else:
+#       # go to green pile
+#       print('Approached Green Block')
+#       save_starting_position()
+#       return_trajectory = plan_curved_trajectory(starting_pose)
+#       for waypoint in return_trajectory:
+#         controller(waypoint)
 
-    rospy.loginfo("Goal reached, resuming patrol.")
-    #patrolling = False
-  except rospy.ROSInterruptException as e:
-    print("Exception thrown in planning callback: " + e)
-    pass
+#     rospy.loginfo("Goal reached, resuming patrol.")
+#     #patrolling = False
+#   except rospy.ROSInterruptException as e:
+#     print("Exception thrown in planning callback: " + e)
+#     pass
       
-
-def patrol_callback(should_patrol_msg):
-    global patrolling
-    patrolling = should_patrol_msg.data
-    rospy.loginfo(f"Patrolling state updated: {patrolling}")
-
-    if patrolling:
-        patrol()
 
 
 # This is Python's sytax for a main() method, which is run by default
 # when exectued in the shell
 if __name__ == '__main__':
+  try:
+      rospy.init_node("turtlebot_patrol_and_goal", anonymous=True)
 
-  rospy.init_node('turtlebot_controller', anonymous=True)
-    
-  rospy.loginfo("waiting for first message from topic monitor...")
-  first_msg = rospy.wait_for_message('/topic_monitor', Bool)
-  patrolling = first_msg.data
-  rospy.loginfo(f"initial patrolling state: {patrolling}")
+      monitor_thread = threading.Thread(target=topic_monitor)
+      monitor_thread.daemon = True
+      monitor_thread.start()
 
-    #patrol timer
-    ##rospy.Timer(rospy.Duration(1), patrol_timer_callback)
-  
-  # rospy.Subscriber("/goal_point", Point, planning_callback) # TODO: what are we subscribing to here?
-  # rospy.Subscriber("/object_color", Bool, planning_callback)
+      patrol()
 
-  goal_sub = message_filters.Subscriber("/goal_point", Point)
-  color_sub = message_filters.Subscriber("/object_color", Bool)
-  should_patrol = rospy.Subscriber("/topic_monitor", Bool, patrol_callback)
-
-# Synchronize messages with allow_headerless=True
-  ts = message_filters.ApproximateTimeSynchronizer(
-      [goal_sub, color_sub],
-      queue_size=10,
-      slop=0.1,
-      allow_headerless=True  
-  )
-  ts.registerCallback(planning_callback)
-
-  # patrol_thread = rospy.Timer(rospy.Duration(1), lambda _: patrol() if patrolling else None)
-  
-  rospy.spin()
+      rospy.loginfo("Main program finished.")
+  except rospy.ROSInterruptException:
+      rospy.loginfo("Node interrupted.")

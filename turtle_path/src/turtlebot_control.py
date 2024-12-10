@@ -19,41 +19,46 @@ from std_msgs.msg import Bool
 import message_filters
 
 patrolling = False
-def patrol(stop_condition):
-    
+#patrol_started = False 
+
+def patrol():
+    global patrolling
     cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     rate = rospy.Rate(10)  # 10 Hz update rate
 
-    # Rectangle parameters
     forward_speed = 0.1  # Speed while moving forward (m/s)
     turn_speed = 0.5  # Angular speed (rad/s)
     length = 1.4  # Length of the rectangle (meters)
     width = 0.15  # Width of the rectangle (meters)
 
     # Move the robot in a rectangular path
-    while not stop_condition:
-        # Move forward along the longer side (length)
-        move_straight(forward_speed, length, cmd_vel_pub)
+    while not rospy.is_shutdown():
+        if patrolling:
+            rospy.loginfo("patrolling")
         
-        # Turn 90 degrees
-        turn_90_degrees(turn_speed, cmd_vel_pub)
-        
-        # Move forward along the shorter side (width)
-        move_straight(forward_speed, width, cmd_vel_pub)
-        
-        # Turn 90 degrees again
-        turn_90_degrees(turn_speed, cmd_vel_pub)
-        
-        # Repeat the rectangle
-        move_straight(forward_speed, length, cmd_vel_pub)
-        turn_90_degrees(turn_speed, cmd_vel_pub)
-        
-        move_straight(forward_speed, width, cmd_vel_pub)
-        turn_90_degrees(turn_speed, cmd_vel_pub)
-        
-        rospy.loginfo("Completed one rectangle path.")
-        rospy.sleep(2)  # Pause briefly before restarting
+            # Move forward along the longer side (length)
+            move_straight(forward_speed, length, cmd_vel_pub)
+            
+            # Turn 90 degrees
+            turn_90_degrees(turn_speed, cmd_vel_pub)
+            
+            # Move forward along the shorter side (width)
+            move_straight(forward_speed, width, cmd_vel_pub)
+            
+            # Turn 90 degrees again
+            turn_90_degrees(turn_speed, cmd_vel_pub)
+            
+            # Repeat the rectangle
+            move_straight(forward_speed, length, cmd_vel_pub)
+            turn_90_degrees(turn_speed, cmd_vel_pub)
+            
+            move_straight(forward_speed, width, cmd_vel_pub)
+            turn_90_degrees(turn_speed, cmd_vel_pub)
 
+            rate.sleep()
+        else:
+            rospy.loginfo("patrolling off")
+            rospy.sleep(1)
 
 
 def move_straight(speed, distance, cmd_vel_pub):
@@ -267,43 +272,36 @@ def planning_callback(goal_msg, color_msg):
       
 
 def patrol_callback(should_patrol_msg):
-  
-  if should_patrol_msg.data:
-    patrolling = True
-    print(f"Should be patrolling?: {should_patrol_msg.data}")
-    patrol(False)
-  else: 
-    patrolling = False
-    patrol(True)
-    print(f"Should NOT be patrolling")
+    global patrolling
+    patrolling = should_patrol_msg.data
+    rospy.loginfo(f"Patrolling state updated: {patrolling}")
 
-
-
+    if patrolling:
+        patrol()
 
 
 # This is Python's sytax for a main() method, which is run by default
 # when exectued in the shell
 if __name__ == '__main__':
-  # Check if the node has received a signal to shut down
-  # If not, run the talker method
 
-  #Run this program as a new node in the ROS computation graph 
-  #called /turtlebot_controller.
-  
   rospy.init_node('turtlebot_controller', anonymous=True)
+    
+    rospy.loginfo("waiting for first message from topic monitor...")
+    first_msg = rospy.wait_for_message('/topic_monitor', Bool)
+    patrolling = first_msg.data
+    rospy.loginfo(f"initial patrolling state: {patrolling}")
+
+    #patrol timer
+    ##rospy.Timer(rospy.Duration(1), patrol_timer_callback)
   
   # rospy.Subscriber("/goal_point", Point, planning_callback) # TODO: what are we subscribing to here?
-
   # rospy.Subscriber("/object_color", Bool, planning_callback)
 
   goal_sub = message_filters.Subscriber("/goal_point", Point)
   color_sub = message_filters.Subscriber("/object_color", Bool)
   should_patrol = rospy.Subscriber("/topic_monitor", Bool, patrol_callback)
 
-  print("PATROLLING: " + str(patrolling))
-  if not patrolling:
-
-    # Synchronize messages with allow_headerless=True
+# Synchronize messages with allow_headerless=True
     ts = message_filters.ApproximateTimeSynchronizer(
         [goal_sub, color_sub],
         queue_size=10,

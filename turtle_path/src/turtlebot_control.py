@@ -200,7 +200,7 @@ def planning_callback(goal_msg, color_msg):
       # return_trajectory = plan_curved_trajectory(green_trash_pile)
       return_trajectory = plan_curved_trajectory(starting_pose)
       for index, waypoint in enumerate(return_trajectory):
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         if index == 7:
           controller(return_trajectory[6])
         controller(waypoint)

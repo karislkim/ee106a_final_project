@@ -41,7 +41,7 @@ class ObjectDetector:
 
         self.point_pub = rospy.Publisher("goal_point", Point, queue_size=10)
         self.image_pub = rospy.Publisher('detected_cup', Image, queue_size=10)
-        # self.color_pub = rospy.Publisher("object_color", Bool, queue_size=10)
+        self.color_pub = rospy.Publisher("object_color", Bool, queue_size=10)
         # self.tf_buffer = tf2_ros.Buffer()
         # self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
@@ -160,32 +160,21 @@ class ObjectDetector:
         if self.fx and self.fy and self.cx and self.cy:
             camera_x, camera_y, camera_z = self.pixel_to_point(centroids[0][0], centroids[0][1])
             # # camera_link_x, camera_link_y, camera_link_z = camera_z, -camera_x, -camera_y
-            camera_link_x, camera_link_y, camera_link_z = camera_y, -camera_x, -camera_z
+            camera_link_x, camera_link_y, camera_link_z = camera_x, camera_y, -camera_z
            
             # print("CAMERA LINK VALS: " + str(camera_link_x) + ", " + str(camera_link_y) + ", " + str(camera_link_z))
 
             # Convert the (X, Y, Z) coordinates from camera frame to odom frame
             try:
-                # pose_camera = PoseStamped()
-                # pose_camera.header.frame_id = "right_hand_camera"
-                # pose_camera.pose.position.x = camera_x
-                # pose_camera.pose.position.y = camera_y
-                # pose_camera.pose.position.z = camera_z
-
-                # Transform to base frame
-                # transform = self.tf_buffer.lookup_transform("base", "right_hand_camera", rospy.Time(0), rospy.Duration(1.0))
-                # pose_base = tf2_geometry_msgs.do_transform_pose(pose_camera, transform)
-
-                # # Extract transformed coordinates
-                # X_odom = pose_base.pose.position.x
-                # Y_odom = pose_base.pose.position.y
-                # Z_odom = pose_base.pose.position.z
-                self.tf_listener.waitForTransform("/base", "/right_hand_camera", rospy.Time(), rospy.Duration(10.0))
+                self.tf_listener.waitForTransform("/right_gripper_tip", "/right_hand_camera", rospy.Time(), rospy.Duration(10.0))
                
 
-                point_odom = self.tf_listener.transformPoint("/base", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/right_hand_camera"), point=Point(camera_link_x, camera_link_y, camera_link_z)))
+                point_gripper = self.tf_listener.transformPoint("/right_gripper_tip", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/right_hand_camera"), point=Point(camera_link_x, camera_link_y, camera_link_z)))
+                X_gripper, Y_gripper, Z_gripper = point_gripper.point.x, point_gripper.point.y, point_gripper.point.z
+
+                self.tf_listener.waitForTransform("/base", "/right_gripper_tip", rospy.Time(), rospy.Duration(10.0))
+                point_odom = self.tf_listener.transformPoint("/base", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/right_gripper_tip"), point=Point(X_gripper, Y_gripper, Z_gripper)))
                 X_odom, Y_odom, Z_odom = point_odom.point.x, point_odom.point.y, point_odom.point.z
-                # X_odom, Y_odom, Z_odom = pose_base.pose.position.x, pose_base.pose.position.y, pose_base.pose.position.z
                 print("Real-world coordinates in odom frame: (X, Y, Z) = ({:.2f}m, {:.2f}m, {:.2f}m)".format(X_odom, Y_odom, Z_odom))
 
                 if X_odom < 0.001 and X_odom > -0.001:
@@ -195,8 +184,13 @@ class ObjectDetector:
                     # Publish the transformed point
                     self.point_pub.publish(Point(X_odom, Y_odom, Z_odom))
 
-                    # print("Publishing object color (orange?): ", is_orange)
-                    # self.color_pub.publish(is_orange)
+                    if np.abs(0.62 - X_odom) <= 0.05 and np.abs(0.37 - Y_odom) <= 0.05:
+                        is_orange = True
+                    else:
+                        is_orange = False
+
+                    print("Publishing object color (orange?): ", is_orange)
+                    self.color_pub.publish(is_orange)
 
                     # Overlay cup points on color image for visualization
                     cup_img = self.cv_gray_image.copy()

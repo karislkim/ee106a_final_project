@@ -167,7 +167,7 @@ def planning_callback(goal_msg, color_msg):
     goal_point = (goal_msg.x, goal_msg.y)
     object_color = color_msg.data
     green_trash_offset = (-0.40, -0.10)  
-    orange_trash_offset = (0.40, 0.0)  
+    orange_trash_offset = (0.10, -0.20)  
 
 
     trajectory = plan_curved_trajectory(goal_point) # TODO: What is the tuple input to this function?
@@ -181,11 +181,11 @@ def planning_callback(goal_msg, color_msg):
       returning = True
       print("Approached Orange Block")
       save_starting_position()
-      # orange_trash_pile = (starting_pose[0] + orange_trash_offset[0],
-                    #starting_pose[1] + orange_trash_offset[1])
+      orange_trash_pile = (starting_pose[0] + orange_trash_offset[0],
+                    starting_pose[1] + orange_trash_offset[1])
 
-      #return_trajectory = plan_curved_trajectory(orange_trash_pile)
-      return_trajectory = plan_curved_trajectory(starting_pose)
+      return_trajectory = plan_curved_trajectory(orange_trash_pile)
+      #return_trajectory = plan_curved_trajectory(starting_pose)
       for waypoint in return_trajectory:
         controller(waypoint)
     else:

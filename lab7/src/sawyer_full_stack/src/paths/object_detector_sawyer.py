@@ -42,8 +42,8 @@ class ObjectDetector:
         self.point_pub = rospy.Publisher("goal_point", Point, queue_size=10)
         self.image_pub = rospy.Publisher('detected_cup', Image, queue_size=10)
         # self.color_pub = rospy.Publisher("object_color", Bool, queue_size=10)
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+        # self.tf_buffer = tf2_ros.Buffer()
+        # self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
         rospy.spin()
 
@@ -123,13 +123,18 @@ class ObjectDetector:
         # TODO: Find contours after mask is applied to image
         contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         centroids = []
+        valid_objects = []
         for cnt in contours:
             M = cv2.moments(cnt)
-            if M["m00"] > 0:
-                cx = int(M["m10"] / M["m00"])
-                cy = int(M["m01"] / M["m00"])
-                centroids.append((cx, cy))
-        print("CENTROIDS: " + str(centroids))
+            area = cv2.contourArea(cnt) 
+            if 1000 <= area <= 5000:  # Filter by size
+                if M["m00"] > 0:
+                    cx = int(M["m10"] / M["m00"])
+                    cy = int(M["m01"] / M["m00"])
+                    centroids.append((cx, cy))
+                    valid_objects.append((cx, cy, area))  # Save centroid and area for valid objects
+
+        print("VALID_oBJecTS: " + str(valid_objects))
 
         # TODO: Determine closest object
         closest_object = None
@@ -140,7 +145,7 @@ class ObjectDetector:
         #     if distance < min_distance:
         #         min_distance = distance
         #         closest_object = (cx, cy) # center of closest object
-        closest_object = (centroids[1][0], centroids[1][1])
+        closest_object = (centroids[0][0], centroids[0][1])
    
         # Calculate the center of the detected region by 
         center_x = int(np.mean(x_coords))
@@ -153,37 +158,34 @@ class ObjectDetector:
 
 
         if self.fx and self.fy and self.cx and self.cy:
-            camera_x, camera_y, camera_z = self.pixel_to_point(center_x, center_y)
+            camera_x, camera_y, camera_z = self.pixel_to_point(centroids[0][0], centroids[0][1])
             # # camera_link_x, camera_link_y, camera_link_z = camera_z, -camera_x, -camera_y
-            # camera_link_x, camera_link_y, camera_link_z = camera_y, -camera_x, -camera_z
-            # Convert from mm to m
-            # camera_link_x /= 1000
-            # camera_link_y /= 1000
-            # camera_link_z /= 1000
+            camera_link_x, camera_link_y, camera_link_z = camera_y, -camera_x, -camera_z
+            
             # print("CAMERA LINK VALS: " + str(camera_link_x) + ", " + str(camera_link_y) + ", " + str(camera_link_z))
 
             # Convert the (X, Y, Z) coordinates from camera frame to odom frame
             try:
-                pose_camera = PoseStamped()
-                pose_camera.header.frame_id = "right_hand_camera"
-                pose_camera.pose.position.x = camera_x
-                pose_camera.pose.position.y = camera_y
-                pose_camera.pose.position.z = camera_z
+                # pose_camera = PoseStamped()
+                # pose_camera.header.frame_id = "right_hand_camera"
+                # pose_camera.pose.position.x = camera_x
+                # pose_camera.pose.position.y = camera_y
+                # pose_camera.pose.position.z = camera_z
 
                 # Transform to base frame
-                transform = self.tf_buffer.lookup_transform("base", "right_hand_camera", rospy.Time(0), rospy.Duration(1.0))
-                pose_base = tf2_geometry_msgs.do_transform_pose(pose_camera, transform)
+                # transform = self.tf_buffer.lookup_transform("base", "right_hand_camera", rospy.Time(0), rospy.Duration(1.0))
+                # pose_base = tf2_geometry_msgs.do_transform_pose(pose_camera, transform)
 
-                # Extract transformed coordinates
-                X_odom = pose_base.pose.position.x
-                Y_odom = pose_base.pose.position.y
-                Z_odom = pose_base.pose.position.z
-                # self.tf_listener.waitForTransform("/base", "/right_hand_camera", rospy.Time(), rospy.Duration(10.0))
+                # # Extract transformed coordinates
+                # X_odom = pose_base.pose.position.x
+                # Y_odom = pose_base.pose.position.y
+                # Z_odom = pose_base.pose.position.z
+                self.tf_listener.waitForTransform("/base", "/right_hand_camera", rospy.Time(), rospy.Duration(10.0))
                 
 
-                # point_odom = self.tf_listener.transformPoint("/base", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/right_hand_camera"), point=Point(camera_link_x, camera_link_y, camera_link_z)))
-                # X_odom, Y_odom, Z_odom = point_odom.point.x, point_odom.point.y, point_odom.point.z
-                X_odom, Y_odom, Z_odom = pose_base.pose.position.x, pose_base.pose.position.y, pose_base.pose.position.z
+                point_odom = self.tf_listener.transformPoint("/base", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/right_hand_camera"), point=Point(camera_link_x, camera_link_y, camera_link_z)))
+                X_odom, Y_odom, Z_odom = point_odom.point.x, point_odom.point.y, point_odom.point.z
+                # X_odom, Y_odom, Z_odom = pose_base.pose.position.x, pose_base.pose.position.y, pose_base.pose.position.z
                 print("Real-world coordinates in odom frame: (X, Y, Z) = ({:.2f}m, {:.2f}m, {:.2f}m)".format(X_odom, Y_odom, Z_odom))
 
                 if X_odom < 0.001 and X_odom > -0.001:

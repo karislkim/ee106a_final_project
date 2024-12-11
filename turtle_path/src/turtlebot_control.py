@@ -186,7 +186,10 @@ def planning_callback(goal_msg, color_msg):
 
       return_trajectory = plan_curved_trajectory(orange_trash_pile)
       #return_trajectory = plan_curved_trajectory(starting_pose)
-      for waypoint in return_trajectory:
+      for index, waypoint in enumerate(return_trajectory):
+        import pdb; pdb.set_trace()
+        if index == 8:
+          controller(return_trajectory[5])
         controller(waypoint)
     else:
       # go to green pile
@@ -196,7 +199,10 @@ def planning_callback(goal_msg, color_msg):
                     #starting_pose[1] + green_trash_offset[1])
       # return_trajectory = plan_curved_trajectory(green_trash_pile)
       return_trajectory = plan_curved_trajectory(starting_pose)
-      for waypoint in return_trajectory:
+      for index, waypoint in enumerate(return_trajectory):
+        import pdb; pdb.set_trace()
+        if index == 7:
+          controller(return_trajectory[6])
         controller(waypoint)
   except rospy.ROSInterruptException as e:
     print("Exception thrown in planning callback: " + e)

@@ -97,7 +97,6 @@ def plan_curved_trajectory(target_position):
 
     waypoints = generate_bezier_waypoints(x1, y1, yaw, x2, y2, yaw, offset=0.2, num_points=10)
     plot_trajectory(waypoints)
-    # import pdb; pdb.set_trace()
 
     return waypoints
 

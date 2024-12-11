@@ -89,7 +89,7 @@ class ObjectDetector:
         # update lower_hsv and upper_hsv directly
 
         # Green item HSV values (represents recycling)
-        # green_lower_hsv = np.array([57, 110, 39]) 
+        # green_lower_hsv = np.array([57, 110, 39])
         # green_upper_hsv = np.array([89, 255, 255])
 
         # TODO: get hsv values for red
@@ -126,7 +126,7 @@ class ObjectDetector:
         valid_objects = []
         for cnt in contours:
             M = cv2.moments(cnt)
-            area = cv2.contourArea(cnt) 
+            area = cv2.contourArea(cnt)
             if 1000 <= area <= 5000:  # Filter by size
                 if M["m00"] > 0:
                     cx = int(M["m10"] / M["m00"])
@@ -147,7 +147,7 @@ class ObjectDetector:
         #         closest_object = (cx, cy) # center of closest object
         closest_object = (centroids[0][0], centroids[0][1])
    
-        # Calculate the center of the detected region by 
+        # Calculate the center of the detected region by
         center_x = int(np.mean(x_coords))
         center_y = int(np.mean(y_coords))
         print("CENTER X, Y: " + str(center_x) + ", " + str(center_y))
@@ -161,7 +161,7 @@ class ObjectDetector:
             camera_x, camera_y, camera_z = self.pixel_to_point(centroids[0][0], centroids[0][1])
             # # camera_link_x, camera_link_y, camera_link_z = camera_z, -camera_x, -camera_y
             camera_link_x, camera_link_y, camera_link_z = camera_y, -camera_x, -camera_z
-            
+           
             # print("CAMERA LINK VALS: " + str(camera_link_x) + ", " + str(camera_link_y) + ", " + str(camera_link_z))
 
             # Convert the (X, Y, Z) coordinates from camera frame to odom frame
@@ -181,7 +181,7 @@ class ObjectDetector:
                 # Y_odom = pose_base.pose.position.y
                 # Z_odom = pose_base.pose.position.z
                 self.tf_listener.waitForTransform("/base", "/right_hand_camera", rospy.Time(), rospy.Duration(10.0))
-                
+               
 
                 point_odom = self.tf_listener.transformPoint("/base", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/right_hand_camera"), point=Point(camera_link_x, camera_link_y, camera_link_z)))
                 X_odom, Y_odom, Z_odom = point_odom.point.x, point_odom.point.y, point_odom.point.z

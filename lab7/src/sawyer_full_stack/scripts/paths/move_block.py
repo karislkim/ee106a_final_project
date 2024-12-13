@@ -44,13 +44,13 @@ def main(goal_msg, color_msg):
     request.ik_request.pose_stamped.header.frame_id = "base"
     
     # Set the desired orientation for the end effector HERE
-    request.ik_request.pose_stamped.pose.position.x = x
-    request.ik_request.pose_stamped.pose.position.y = y
-    request.ik_request.pose_stamped.pose.position.z = 0.15   
-    request.ik_request.pose_stamped.pose.orientation.x = -0.016
-    request.ik_request.pose_stamped.pose.orientation.y = 0.706
-    request.ik_request.pose_stamped.pose.orientation.z = -0.020
-    request.ik_request.pose_stamped.pose.orientation.w = 0.707
+    request.ik_request.pose_stamped.pose.position.x = x + 0.05
+    request.ik_request.pose_stamped.pose.position.y = y + 0.01
+    request.ik_request.pose_stamped.pose.position.z = 0.2   
+    request.ik_request.pose_stamped.pose.orientation.x = 0.0
+    request.ik_request.pose_stamped.pose.orientation.y = 1.0
+    request.ik_request.pose_stamped.pose.orientation.z = 0.0
+    request.ik_request.pose_stamped.pose.orientation.w = 0.0
 
     print("REQUEST: " + str(request))
 
@@ -66,8 +66,8 @@ def main(goal_msg, color_msg):
     request2.ik_request.pose_stamped.header.frame_id = "base"
     
     # Set the desired orientation for the end effector HERE
-    request2.ik_request.pose_stamped.pose.position.x = x
-    request2.ik_request.pose_stamped.pose.position.y = y
+    request2.ik_request.pose_stamped.pose.position.x = x + 0.05
+    request2.ik_request.pose_stamped.pose.position.y = y + 0.01
     request2.ik_request.pose_stamped.pose.position.z = -0.16      
     request2.ik_request.pose_stamped.pose.orientation.x = 0.0
     request2.ik_request.pose_stamped.pose.orientation.y = 1.0
@@ -86,9 +86,9 @@ def main(goal_msg, color_msg):
     request3.ik_request.pose_stamped.header.frame_id = "base"
     
     # Set the desired orientation for the end effector HERE
-    request3.ik_request.pose_stamped.pose.position.x = 0.358
-    request3.ik_request.pose_stamped.pose.position.y = 0.655
-    request3.ik_request.pose_stamped.pose.position.z = 0.1    
+    request3.ik_request.pose_stamped.pose.position.x = 0.466
+    request3.ik_request.pose_stamped.pose.position.y = -0.107
+    request3.ik_request.pose_stamped.pose.position.z = 0.019  
     request3.ik_request.pose_stamped.pose.orientation.x = 0.0
     request3.ik_request.pose_stamped.pose.orientation.y = 1.0
     request3.ik_request.pose_stamped.pose.orientation.z = 0.0
@@ -106,9 +106,9 @@ def main(goal_msg, color_msg):
     request4.ik_request.pose_stamped.header.frame_id = "base"
     
     # Set the desired orientation for the end effector HERE
-    request4.ik_request.pose_stamped.pose.position.x = 0.358
-    request4.ik_request.pose_stamped.pose.position.y = 0.655
-    request4.ik_request.pose_stamped.pose.position.z = 0.1      
+    request4.ik_request.pose_stamped.pose.position.x = 0.436
+    request4.ik_request.pose_stamped.pose.position.y = 0.240
+    request4.ik_request.pose_stamped.pose.position.z = 0.043    
     request4.ik_request.pose_stamped.pose.orientation.x = 0.0
     request4.ik_request.pose_stamped.pose.orientation.y = 1.0
     request4.ik_request.pose_stamped.pose.orientation.z = 0.0

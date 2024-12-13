@@ -127,7 +127,7 @@ class ObjectDetector:
         for cnt in contours:
             M = cv2.moments(cnt)
             area = cv2.contourArea(cnt)
-            if 1500 <= area <= 5000:  # Filter by size
+            if 1300 <= area <= 5000:  # Filter by size
                 if M["m00"] > 0:
                     cx = int(M["m10"] / M["m00"])
                     cy = int(M["m01"] / M["m00"])
@@ -186,7 +186,7 @@ class ObjectDetector:
                     # Publish the transformed point
                     self.point_pub.publish(Point(X_odom, Y_odom, Z_odom))
 
-                    if np.abs(0.62 - X_odom) <= 0.05 and np.abs(0.37 - Y_odom) <= 0.05:
+                    if np.abs(0.55 - X_odom) <= 0.15 and np.abs(0.20 - Y_odom) <= 0.05:
                         is_orange = True
                     else:
                         is_orange = False

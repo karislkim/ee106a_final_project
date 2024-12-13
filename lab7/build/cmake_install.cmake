@@ -133,8 +133,8 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/lab7/build/gtest/cmake_install.cmake")
   include("/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/lab7/build/sawyer_full_stack/cmake_install.cmake")
   include("/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/lab7/build/ar_track_alvar/ar_track_alvar_msgs/cmake_install.cmake")
-  include("/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/lab7/build/ar_track_alvar/ar_track_alvar/cmake_install.cmake")
   include("/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/lab7/build/baxter_pykdl/cmake_install.cmake")
+  include("/home/cc/ee106a/fa24/class/ee106a-afh/ros_workspaces/lab7/build/ar_track_alvar/ar_track_alvar/cmake_install.cmake")
 
 endif()
 

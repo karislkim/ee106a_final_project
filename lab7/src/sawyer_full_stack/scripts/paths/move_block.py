@@ -10,6 +10,8 @@ from intera_interface import gripper as robot_gripper
 from geometry_msgs.msg import Point
 from std_msgs.msg import Bool
 import message_filters
+import rospkg
+import roslaunch
 
 def main(goal_msg, color_msg):
     print("GOAL_POINT: " + str(goal_msg))
@@ -42,13 +44,13 @@ def main(goal_msg, color_msg):
     request.ik_request.pose_stamped.header.frame_id = "base"
     
     # Set the desired orientation for the end effector HERE
-    request.ik_request.pose_stamped.pose.position.x = x + 0.01
-    request.ik_request.pose_stamped.pose.position.y = y + 0.05
-    request.ik_request.pose_stamped.pose.position.z = 0.4      
-    request.ik_request.pose_stamped.pose.orientation.x = 0.0
-    request.ik_request.pose_stamped.pose.orientation.y = 1.0
-    request.ik_request.pose_stamped.pose.orientation.z = 0.0
-    request.ik_request.pose_stamped.pose.orientation.w = 0.0
+    request.ik_request.pose_stamped.pose.position.x = x
+    request.ik_request.pose_stamped.pose.position.y = y
+    request.ik_request.pose_stamped.pose.position.z = 0.15   
+    request.ik_request.pose_stamped.pose.orientation.x = -0.016
+    request.ik_request.pose_stamped.pose.orientation.y = 0.706
+    request.ik_request.pose_stamped.pose.orientation.z = -0.020
+    request.ik_request.pose_stamped.pose.orientation.w = 0.707
 
     print("REQUEST: " + str(request))
 
@@ -64,9 +66,9 @@ def main(goal_msg, color_msg):
     request2.ik_request.pose_stamped.header.frame_id = "base"
     
     # Set the desired orientation for the end effector HERE
-    request2.ik_request.pose_stamped.pose.position.x = x + 0.01
-    request2.ik_request.pose_stamped.pose.position.y = y + 0.05
-    request2.ik_request.pose_stamped.pose.position.z = -0.143      
+    request2.ik_request.pose_stamped.pose.position.x = x
+    request2.ik_request.pose_stamped.pose.position.y = y
+    request2.ik_request.pose_stamped.pose.position.z = -0.16      
     request2.ik_request.pose_stamped.pose.orientation.x = 0.0
     request2.ik_request.pose_stamped.pose.orientation.y = 1.0
     request2.ik_request.pose_stamped.pose.orientation.z = 0.0
@@ -84,9 +86,9 @@ def main(goal_msg, color_msg):
     request3.ik_request.pose_stamped.header.frame_id = "base"
     
     # Set the desired orientation for the end effector HERE
-    request3.ik_request.pose_stamped.pose.position.x = 0.731
-    request3.ik_request.pose_stamped.pose.position.y = 0.599
-    request3.ik_request.pose_stamped.pose.position.z = -0.087      
+    request3.ik_request.pose_stamped.pose.position.x = 0.358
+    request3.ik_request.pose_stamped.pose.position.y = 0.655
+    request3.ik_request.pose_stamped.pose.position.z = 0.1    
     request3.ik_request.pose_stamped.pose.orientation.x = 0.0
     request3.ik_request.pose_stamped.pose.orientation.y = 1.0
     request3.ik_request.pose_stamped.pose.orientation.z = 0.0
@@ -104,9 +106,9 @@ def main(goal_msg, color_msg):
     request4.ik_request.pose_stamped.header.frame_id = "base"
     
     # Set the desired orientation for the end effector HERE
-    request4.ik_request.pose_stamped.pose.position.x = 0.731
-    request4.ik_request.pose_stamped.pose.position.y = 0.599
-    request4.ik_request.pose_stamped.pose.position.z = -0.087      
+    request4.ik_request.pose_stamped.pose.position.x = 0.358
+    request4.ik_request.pose_stamped.pose.position.y = 0.655
+    request4.ik_request.pose_stamped.pose.position.z = 0.1      
     request4.ik_request.pose_stamped.pose.orientation.x = 0.0
     request4.ik_request.pose_stamped.pose.orientation.y = 1.0
     request4.ik_request.pose_stamped.pose.orientation.z = 0.0
@@ -169,6 +171,7 @@ def main(goal_msg, color_msg):
                 rospy.sleep(1.0)
                 print('Done!')
         else:
+            print("dropping block off")
             response4 = compute_ik(request4)
             print(response4)
             group4 = MoveGroupCommander("right_arm")
@@ -182,6 +185,14 @@ def main(goal_msg, color_msg):
                 right_gripper.open()
                 rospy.sleep(1.0)
                 print('Done!')
+
+        # rospack = rospkg.RosPack()
+        # path = rospack.get_path('sawyer_full_stack')
+        # launch_path = path + '/launch/custom_sawyer_tuck.launch'
+        # uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
+        # roslaunch.configure_logging(uuid)
+        # launch = roslaunch.parent.ROSLaunchParent(uuid, [launch_path])
+        # launch.start()
 
 
             

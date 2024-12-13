@@ -151,7 +151,6 @@ class MotionPath:
             theta_t_2 = self.ik_service_client(self.trajectory.target_pose(max(t-2*delta_t, 0)))            
             theta_t_1 = self.ik_service_client(self.trajectory.target_pose(max(t-delta_t, 0)))
             theta_t   = self.ik_service_client(self.trajectory.target_pose(t))
-            print("THETA_T: " + str(theta_t))
             
             # we said you shouldn't simply take a finite difference when creating
             # the path, why do you think we're doing that here?

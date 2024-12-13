@@ -127,7 +127,7 @@ class ObjectDetector:
         for cnt in contours:
             M = cv2.moments(cnt)
             area = cv2.contourArea(cnt)
-            if 1000 <= area <= 5000:  # Filter by size
+            if 1500 <= area <= 5000:  # Filter by size
                 if M["m00"] > 0:
                     cx = int(M["m10"] / M["m00"])
                     cy = int(M["m01"] / M["m00"])
@@ -159,21 +159,23 @@ class ObjectDetector:
 
         if self.fx and self.fy and self.cx and self.cy:
             camera_x, camera_y, camera_z = self.pixel_to_point(centroids[0][0], centroids[0][1])
-            # # camera_link_x, camera_link_y, camera_link_z = camera_z, -camera_x, -camera_y
-            camera_link_x, camera_link_y, camera_link_z = camera_x, camera_y, -camera_z
+            
+            # camera_link_x, camera_link_y, camera_link_z = camera_y, camera_x, camera_z
+            camera_link_x, camera_link_y, camera_link_z = camera_x, camera_y, camera_z
+            # camera_link_x, camera_link_y, camera_link_z = -camera_z, -camera_y, camera_x
            
             # print("CAMERA LINK VALS: " + str(camera_link_x) + ", " + str(camera_link_y) + ", " + str(camera_link_z))
 
             # Convert the (X, Y, Z) coordinates from camera frame to odom frame
             try:
-                self.tf_listener.waitForTransform("/right_hand", "/right_hand_camera", rospy.Time(), rospy.Duration(10.0))
+                # self.tf_listener.waitForTransform("/right_hand", "/right_hand_camera", rospy.Time(), rospy.Duration(10.0))
                
 
-                point_gripper = self.tf_listener.transformPoint("/right_hand", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/right_hand_camera"), point=Point(camera_link_x, camera_link_y, camera_link_z)))
-                X_gripper, Y_gripper, Z_gripper = point_gripper.point.x, point_gripper.point.y, point_gripper.point.z
+                # point_gripper = self.tf_listener.transformPoint("/right_hand", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/right_hand_camera"), point=Point(camera_link_x, camera_link_y, camera_link_z)))
+                # X_gripper, Y_gripper, Z_gripper = point_gripper.point.x, point_gripper.point.y, point_gripper.point.z
 
-                self.tf_listener.waitForTransform("/base", "/right_hand", rospy.Time(), rospy.Duration(10.0))
-                point_odom = self.tf_listener.transformPoint("/base", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/right_hand"), point=Point(X_gripper, Y_gripper, Z_gripper)))
+                self.tf_listener.waitForTransform("/base", "/right_hand_camera", rospy.Time(), rospy.Duration(10.0))
+                point_odom = self.tf_listener.transformPoint("/base", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/right_hand_camera"), point=Point(camera_link_x, camera_link_y, camera_link_z)))
                 X_odom, Y_odom, Z_odom = point_odom.point.x, point_odom.point.y, point_odom.point.z
                 print("Real-world coordinates in odom frame: (X, Y, Z) = ({:.2f}m, {:.2f}m, {:.2f}m)".format(X_odom, Y_odom, Z_odom))
 

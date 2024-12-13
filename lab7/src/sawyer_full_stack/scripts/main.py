@@ -25,15 +25,7 @@ import tf2_ros
 import intera_interface
 from moveit_msgs.msg import DisplayTrajectory, RobotState
 from sawyer_pykdl import sawyer_kinematics
-
-# Mock gripper class to bypass checks if a physical gripper is not detected
-class MockGripper:
-    def calibrate(self):
-        print("Mock gripper calibration...")
-    def close(self):
-        print("Mock gripper closing...")
-    def open(self):
-        print("Mock gripper opening...")
+from intera_interface import gripper as robot_gripper
 
 def tuck():
     """
@@ -49,42 +41,6 @@ def tuck():
         launch.start()
     else:
         print('Canceled. Not tucking the arm.')
-
-def lookup_tag(tag_number):
-    """
-    Given an AR tag number, this returns the position of the AR tag in the robot's base frame.
-    You can use either this function or try starting the scripts/tag_pub.py script.  More info
-    about that script is in that file.  
-
-    Parameters
-    ----------
-    tag_number : int
-
-    Returns
-    -------
-    3x' :obj:`numpy.ndarray`
-        tag position
-    """
-
-    
-    # TODO: initialize a tf buffer and listener as in lab 3
-    tfBuffer = tf2_ros.Buffer()
-    tfListener = tf2_ros.TransformListener(tfBuffer)
-
-    try:
-        # TODO: lookup the transform and save it in trans
-        # The rospy.Time(0) is the latest available 
-        # The rospy.Duration(10.0) is the amount of time to wait for the transform to be available before throwing an exception
-        trans = tfBuffer.lookup_transform('base', 'ar_marker_' + str(tag_number), rospy.Time(0), rospy.Duration(10.0))
-        # trans = tfBuffer.lookup_transform('ar_marker_' + str(tag_number), 'base', rospy.Time(0), rospy.Duration(10.0))
-        print("AR_TAG : " + 'ar_marker_' + str(tag_number))
-    except Exception as e:
-        print(e)
-        print("Retrying ...")
-
-    tag_pos = [getattr(trans.transform.translation, dim) for dim in ('x', 'y', 'z')]
-    print(np.array(tag_pos))
-    return np.array(tag_pos)
 
 def get_trajectory(limb, kin, ik_solver, tag_pos):
     """
@@ -115,16 +71,12 @@ def get_trajectory(limb, kin, ik_solver, tag_pos):
     current_position = np.array([getattr(trans.transform.translation, dim) for dim in ('x', 'y', 'z')])
 
     if task == 'line':
+        
         target_pos = tag_pos[0] 
-        target_pos[2] += 0.4 #linear path moves to a Z position above AR Tag.
-        print("TARGET POSITION:", target_pos)
+        # target_pos[2] = 0.4 #linear path moves to a Z position above AR Tag.
+        print("TARGET POS: " + str(target_pos))
+        print("CURRENT POS: " + str(current_position))
         trajectory = LinearTrajectory(start_position=current_position, goal_position=target_pos, total_time=9)
-    # elif task == 'circle':
-    #     target_pos = tag_pos[0]
-    #     target_pos[2] += 0.5
-    #     print("TARGET POSITION:", target_pos)
-    #     trajectory = CircularTrajectory(center_position=target_pos, radius=0.1, total_time=15)
-
     else:
         raise ValueError('task {} not recognized'.format(task))
     
@@ -165,41 +117,13 @@ def main(goal_point):
  
     You can also change the rate, timeout if you want
     """
-    parser = argparse.ArgumentParser()
-    # parser.add_argument('-task', '-t', type=str, default='line', help=
-    #     'Options: line, circle.  Default: line'
-    # )
-    # parser.add_argument('-ar_marker', '-ar', nargs='+', help=
-    #     'Which AR marker to use.  Default: 1'
-    # )
-    # parser.add_argument('-controller_name', '-c', type=str, default='moveit', 
-    #     help='Options: moveit, open_loop, pid.  Default: moveit'
-    # )
-    # parser.add_argument('-rate', type=int, default=200, help="""
-    #     This specifies how many ms between loops.  It is important to use a rate
-    #     and not a regular while loop because you want the loop to refresh at a
-    #     constant rate, otherwise you would have to tune your PD parameters if 
-    #     the loop runs slower / faster.  Default: 200"""
-    # )
-    # parser.add_argument('-timeout', type=int, default=None, help=
-    #     """after how many seconds should the controller terminate if it hasn\'t already.  
-    #     Default: None"""
-    # )
-    # parser.add_argument('-num_way', type=int, default=50, help=
-    #     'How many waypoints for the :obj:`moveit_msgs.msg.RobotTrajectory`.  Default: 300'
-    # )
-    # parser.add_argument('--log', action='store_true', help='plots controller performance')
-    # args = parser.parse_args()
-
-
-    # rospy.init_node('moveit_node')
+    # parser = argparse.ArgumentParser()
     
-    # tuck()
+    tuck()
     
-    
+    right_gripper = robot_gripper.Gripper('right_gripper')
     # this is used for sending commands (velocity, torque, etc) to the robot
-    # ik_solver = IK("base", "right_gripper_tip")
-    ik_solver = IK("base", "stp_022412TP99883_tip")
+    ik_solver = IK("base", "right_gripper_tip")
     limb = intera_interface.Limb("right")
     kin = sawyer_kinematics("right")
 
@@ -213,7 +137,7 @@ def main(goal_point):
     # and velocities are the positions and velocities of each joint.
 
     #TODO CHANGE THIS TO VALUE DETECTED IN OBJECT_DETECTOR tag_pos
-    tag_pos = [[goal_point.x, goal_point.y, 0.2]]
+    tag_pos = [[goal_point.x, goal_point.y, -0.02]]
     robot_trajectory = get_trajectory(limb, kin, ik_solver, tag_pos)
 
     # This is a wrapper around MoveIt! for you to use.  We use MoveIt! to go to the start position
@@ -228,33 +152,30 @@ def main(goal_point):
     disp_traj.trajectory.append(robot_trajectory)
     disp_traj.trajectory_start = RobotState()
     pub.publish(disp_traj)
+    right_gripper.open()
+    rospy.sleep(1.0)
 
     # Move to the trajectory start position
     plan = planner.plan_to_joint_pos(robot_trajectory.joint_trajectory.points[0].positions)
-    if args.controller_name != "moveit":
-        plan = planner.retime_trajectory(plan, 0.3)
+    # if controller_name != "moveit":
+    plan = planner.retime_trajectory(plan, 0.3)
     planner.execute_plan(plan[1])
 
-    # if args.controller_name == "moveit":
-    #     try:
-    #         input('Press <Enter> to execute the trajectory using MOVEIT')
-    #     except KeyboardInterrupt:
-    #         sys.exit()
-    #     # Uses MoveIt! to execute the trajectory.
-    #     planner.execute_plan(robot_trajectory)
-    # else:
     controller = get_controller("pid", limb, kin)
-    try:
-        input('Press <Enter> to execute the trajectory using YOUR OWN controller')
-    except KeyboardInterrupt:
-        sys.exit()
+    # try:
+    #     input('Press <Enter> to execute the trajectory using YOUR OWN controller')
+    # except KeyboardInterrupt:
+    #     sys.exit()
     # execute the path using your own controller.
     done = controller.execute_path(
         robot_trajectory, 
         rate=200, 
         timeout=None, 
-        log=True
+        log=False
     )
+    if True:
+        right_gripper.close()
+        rospy.sleep(1.0)
     if not done:
         print('Failed to move to position')
         sys.exit(0)

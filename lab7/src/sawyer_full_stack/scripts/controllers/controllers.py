@@ -23,6 +23,8 @@ try:
     import intera_interface
     from geometry_msgs.msg import PoseStamped
     from moveit_msgs.msg import RobotTrajectory
+    from intera_interface import gripper as robot_gripper
+
 except:
     pass
 
@@ -146,6 +148,7 @@ class Controller:
             target_position = np.array(path.joint_trajectory.points[current_index].positions)
             target_velocity = np.array(path.joint_trajectory.points[current_index].velocities)
             target_acceleration = np.array(path.joint_trajectory.points[current_index].velocities)
+
 
         return (target_position, target_velocity, target_acceleration, current_index)
 
@@ -375,6 +378,7 @@ class Controller:
 
             if current_index >= max_index:
                 self.stop_moving()
+                
                 break
 
         if log:

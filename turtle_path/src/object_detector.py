@@ -89,8 +89,8 @@ class ObjectDetector:
         # green_upper_hsv = np.array([89, 255, 255])
 
         # TODO: get hsv values for red
-        green_lower_hsv = np.array([0, 120, 120])
-        green_upper_hsv = np.array([85, 255, 255])
+        green_lower_hsv = np.array([96, 137, 80])
+        green_upper_hsv = np.array([179, 255, 255])
 
         orange_lower_hsv = np.array([0, 142, 162])
         orange_upper_hsv = np.array([179, 255, 255])

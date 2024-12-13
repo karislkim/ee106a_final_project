@@ -193,9 +193,24 @@ def planning_callback(goal_msg, color_msg):
         # Example condition: special handling for the 8th waypoint
         if index == 8:
           controller(return_trajectory[5])
-        
-        # Call the controller for the current waypoint
-        controller(waypoint)
+        if index == 9:
+          last =[0,0,0]
+          desired_roll = 0
+          desired_pitch = 0
+          desired_yaw = np.pi / 6  # Example: 90 degrees rotation
+          
+          
+          quat = quaternion_from_euler(desired_roll, desired_pitch, desired_yaw)
+          
+          
+          last[0]= quat[0]
+          last[1] = quat[1]
+          last[2] = quat[2]
+          
+          controller(waypoint)
+          continue
+        else: 
+          controller(waypoint)
           
 
     else:

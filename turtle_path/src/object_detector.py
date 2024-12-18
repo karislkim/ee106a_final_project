@@ -3,7 +3,7 @@
 import rospy
 import cv2
 import numpy as np
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, RegionOfInterest
 from sensor_msgs.msg import CameraInfo # For camera intrinsic parameters
 from cv_bridge import CvBridge
 import matplotlib.pyplot as plt
@@ -42,6 +42,7 @@ class ObjectDetector:
         self.image_pub = rospy.Publisher('detected_cup', Image, queue_size=10)
         self.color_pub = rospy.Publisher("object_color", Bool, queue_size=10)
 
+
         rospy.spin()
 
     def camera_info_callback(self, msg):
@@ -79,8 +80,17 @@ class ObjectDetector:
             print("Error:", e)
 
     def process_images(self):
-        # Convert the color image to HSV color space
-        hsv = cv2.cvtColor(self.cv_color_image, cv2.COLOR_BGR2HSV)
+        height, width = self.cv_color_image.shape[:2]
+        mask = np.zeros((height, width), dtype=np.uint8)
+        mask[height//2:, :] = 255  # Only keep the bottom half
+
+
+        # Apply the mask to the color and depth images
+        masked_color = cv2.bitwise_and(self.cv_color_image, self.cv_color_image, mask=mask)
+        masked_depth = cv2.bitwise_and(self.cv_depth_image, self.cv_depth_image, mask=mask)
+
+
+        hsv = cv2.cvtColor(masked_color, cv2.COLOR_BGR2HSV)
         # Run `python hsv_color_thresholder.py` and tune the bounds so you only see your cup
         # update lower_hsv and upper_hsv directly
 
@@ -175,11 +185,13 @@ class ObjectDetector:
                     # Overlay cup points on color image for visualization
                     cup_img = self.cv_color_image.copy()
                     cup_img[y_coords, x_coords] = [0, 0, 255]  # Highlight cup points in red
-                    cv2.circle(cup_img, (closest_object[0], closest_object[1]), 5, [255, 0, 0], -1)  # Draw green circle at center
+                    cv2.circle(masked_color, (closest_object[0], closest_object[1]), 5, [255, 0, 0], -1)  # Draw green circle at center
                     
                     # Convert to ROS Image message and publish
-                    ros_image = self.bridge.cv2_to_imgmsg(cup_img, "bgr8")
+                    ros_image = self.bridge.cv2_to_imgmsg(masked_color, "bgr8")
                     self.image_pub.publish(ros_image)
+
+
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
                 print("TF Error: " + e)
                 return

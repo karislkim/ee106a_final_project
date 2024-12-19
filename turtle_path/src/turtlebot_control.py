@@ -21,6 +21,8 @@ import message_filters
 
 ready_to_detect = True
 
+goal_subscriber = None
+
 
 #Define the method which contains the main functionality of the node.
 def controller(waypoint):
@@ -173,77 +175,105 @@ def planning_callback(goal_msg, color_msg):
     return
 
   try:
+    unsubscribe_from_goal_point()
+
     goal_point = (goal_msg.x, goal_msg.y)
     object_color = color_msg.data
     # green_trash_offset = (-0.40, -0.10)  
     orange_trash_offset = (0.10, -0.20)  
 
+    ready_to_detect = False
 
     trajectory = plan_curved_trajectory(goal_point) # TODO: What is the tuple input to this function?
 
     # TODO: write a loop to loop over our waypoints and call the controller function on each waypoint
     returning = False
 
+    
+    
     for waypoint in trajectory:
       controller(waypoint)
 
+    returning = True
     if object_color:
-      returning = True
+      
       print("Approached Orange Block")
       save_starting_position()
       orange_trash_pile = (starting_pose[0] + orange_trash_offset[0],
                     starting_pose[1] + orange_trash_offset[1])
-      ready_to_detect = False
+      
 
       return_trajectory = plan_curved_trajectory(orange_trash_pile)
-      #return_trajectory = plan_curved_trajectory(starting_pose)
+      
 
       for index, waypoint in enumerate(return_trajectory):
+        
         if index == 0:
           continue
     
         # Example condition: special handling for the 8th waypoint
         if index == 8:
           controller(return_trajectory[5])
-        if index == 9:
-          last =[0,0,0]
-          desired_roll = 0
-          desired_pitch = 0
-          desired_yaw = np.pi / 6  # Example: 90 degrees rotation
-          quat = quaternion_from_euler(desired_roll, desired_pitch, desired_yaw)                  
-          last[0]= quat[0]
-          last[1] = quat[1]
-          last[2] = quat[2]
-          
-          controller(waypoint)
-          continue
-        else: 
-          controller(waypoint)
+        # if index == 9:
+        #   last =[0,0,0]
+        #   desired_roll = 0
+        #   desired_pitch = 0
+        #   desired_yaw = np.pi / 6  # Example: 90 degrees rotation
+        #   quat = quaternion_from_euler(desired_roll, desired_pitch, desired_yaw)                  
+        #   last[0]= quat[0]
+        #   last[1] = quat[1]
+        #   last[2] = quat[2]
 
-      rospy.sleep(5)
-      ready_to_detect = True
-      print("ready to detect next block")
+          
+          #controller(waypoint)
+        controller(waypoint)
+        #   continue
+        # else: 
+        #   controller(waypoint)
+        
+
+      # rospy.sleep(5)
+      # ready_to_detect = True
+      # print("ready to detect next block")
           
 
     else:
-      # go to green pile
+      # import pdb; pdb.set_trace() 
+     
       print('Approached Green Block')
       save_starting_position()
-      # green_trash_pile = (starting_pose[0] + green_trash_offset[0],
-                    #starting_pose[1] + green_trash_offset[1])
-      # return_trajectory = plan_curved_trajectory(green_trash_pile)
       return_trajectory = plan_curved_trajectory(starting_pose)
       for index, waypoint in enumerate(return_trajectory):
-        # import pdb; pdb.set_trace()
+        
         if index == 0:
           continue
         if index == 8:
           controller(return_trajectory[5])
         controller(waypoint)
+    
+    rospy.sleep(5)
+    ready_to_detect = True
+    returning = False
+    print("ready to detect next block")
+    subscribe_to_goal_point()
   except rospy.ROSInterruptException as e:
     print("Exception thrown in planning callback: " + e)
     pass
-      
+
+def subscribe_to_goal_point():
+    global goal_subscriber
+    if goal_subscriber is None:
+        
+        rospy.loginfo("Subscribed to /goal_point")
+        return message_filters.Subscriber("/goal_point", Point)
+
+def unsubscribe_from_goal_point():
+    global goal_subscriber
+    if goal_subscriber is not None:
+        goal_sub.unregister()
+        goal_subscriber = None
+        rospy.loginfo("Unsubscribed from /goal_point")
+    print("NOT DETECTING ___________________________________________________________________________________________________")
 
 # This is Python's sytax for a main() method, which is run by default
 # when exectued in the shell
@@ -260,16 +290,19 @@ if __name__ == '__main__':
 
   # rospy.Subscriber("/object_color", Bool, planning_callback)
 
-  goal_sub = message_filters.Subscriber("/goal_point", Point)
+  goal_sub = subscribe_to_goal_point()  
+   
   color_sub = message_filters.Subscriber("/object_color", Bool)
-
-  # Synchronize messages with allow_headerless=True
+  
+  
+  
   ts = message_filters.ApproximateTimeSynchronizer(
-      [goal_sub, color_sub],
-      queue_size=10,
-      slop=0.1,
-      allow_headerless=True  
+    [goal_sub, color_sub],
+    queue_size=10,
+    slop=0.1,
+    allow_headerless=True  
   )
   ts.registerCallback(planning_callback)
+  
   
   rospy.spin()

@@ -80,6 +80,7 @@ class ObjectDetector:
             print("Error:", e)
 
     def process_images(self):
+        
         height, width = self.cv_color_image.shape[:2]
         mask = np.zeros((height, width), dtype=np.uint8)
         mask[height//2:, :] = 255  # Only keep the bottom half

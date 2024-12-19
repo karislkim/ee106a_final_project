@@ -39,9 +39,9 @@ class ObjectDetector:
 
         self.tf_listener = tf.TransformListener()  # Create a TransformListener object
 
-        self.point_pub = rospy.Publisher("goal_point", Point, queue_size=10)
-        self.image_pub = rospy.Publisher('detected_cup', Image, queue_size=10)
-        self.color_pub = rospy.Publisher("object_color", Bool, queue_size=10)
+        self.point_pub = rospy.Publisher("goal_point", Point, queue_size=1)
+        self.image_pub = rospy.Publisher('detected_cup', Image, queue_size=1)
+        self.color_pub = rospy.Publisher("object_color", Bool, queue_size=1)
         # self.tf_buffer = tf2_ros.Buffer()
         # self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
@@ -83,6 +83,7 @@ class ObjectDetector:
             print("Error:", e)
 
     def process_images(self):
+        # rospy.sleep(10)
         # Convert the color image to HSV color space
         #hsv = cv2.cvtColor(self.cv_gray_image, cv2.COLOR_BGR2HSV)
         # Run `python hsv_color_thresholder.py` and tune the bounds so you only see your cup
@@ -127,7 +128,7 @@ class ObjectDetector:
         for cnt in contours:
             M = cv2.moments(cnt)
             area = cv2.contourArea(cnt)
-            if 1300 <= area <= 5000:  # Filter by size
+            if 1300 <= area <= 8000:  # Filter by size
                 if M["m00"] > 0:
                     cx = int(M["m10"] / M["m00"])
                     cy = int(M["m01"] / M["m00"])

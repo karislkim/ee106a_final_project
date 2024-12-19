@@ -18,6 +18,10 @@ from trajectory import plan_curved_trajectory
 from std_msgs.msg import Bool
 import message_filters
 
+
+ready_to_detect = True
+
+
 #Define the method which contains the main functionality of the node.
 def controller(waypoint):
   """
@@ -162,7 +166,12 @@ def save_starting_position():
     print(f"Error saving starting position: {e}")
 
 def planning_callback(goal_msg, color_msg):
-  global returning
+  global ready_to_detect, returning
+  
+  if not ready_to_detect:
+    print("not ready to detect")
+    return
+
   try:
     goal_point = (goal_msg.x, goal_msg.y)
     object_color = color_msg.data
@@ -174,6 +183,7 @@ def planning_callback(goal_msg, color_msg):
 
     # TODO: write a loop to loop over our waypoints and call the controller function on each waypoint
     returning = False
+
     for waypoint in trajectory:
       controller(waypoint)
 
@@ -183,9 +193,11 @@ def planning_callback(goal_msg, color_msg):
       save_starting_position()
       orange_trash_pile = (starting_pose[0] + orange_trash_offset[0],
                     starting_pose[1] + orange_trash_offset[1])
+      ready_to_detect = False
 
       return_trajectory = plan_curved_trajectory(orange_trash_pile)
       #return_trajectory = plan_curved_trajectory(starting_pose)
+
       for index, waypoint in enumerate(return_trajectory):
         if index == 0:
           continue
@@ -198,11 +210,7 @@ def planning_callback(goal_msg, color_msg):
           desired_roll = 0
           desired_pitch = 0
           desired_yaw = np.pi / 6  # Example: 90 degrees rotation
-          
-          
-          quat = quaternion_from_euler(desired_roll, desired_pitch, desired_yaw)
-          
-          
+          quat = quaternion_from_euler(desired_roll, desired_pitch, desired_yaw)                  
           last[0]= quat[0]
           last[1] = quat[1]
           last[2] = quat[2]
@@ -211,6 +219,10 @@ def planning_callback(goal_msg, color_msg):
           continue
         else: 
           controller(waypoint)
+
+      rospy.sleep(5)
+      ready_to_detect = True
+      print("ready to detect next block")
           
 
     else:

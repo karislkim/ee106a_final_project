@@ -83,8 +83,6 @@ class ObjectDetector:
         height, width = self.cv_color_image.shape[:2]
         mask = np.zeros((height, width), dtype=np.uint8)
         mask[height//2:, :] = 255  # Only keep the bottom half
-
-
         # Apply the mask to the color and depth images
         masked_color = cv2.bitwise_and(self.cv_color_image, self.cv_color_image, mask=mask)
         masked_depth = cv2.bitwise_and(self.cv_depth_image, self.cv_depth_image, mask=mask)
@@ -185,10 +183,14 @@ class ObjectDetector:
                     # Overlay cup points on color image for visualization
                     cup_img = self.cv_color_image.copy()
                     cup_img[y_coords, x_coords] = [0, 0, 255]  # Highlight cup points in red
-                    cv2.circle(masked_color, (closest_object[0], closest_object[1]), 5, [255, 0, 0], -1)  # Draw green circle at center
+                    cv2.circle(cup_img, (closest_object[0], closest_object[1]), 5, [255, 0, 0], -1)  # Draw green circle at center
                     
+
+                    cutoff_line_y = height // 2
+                    cv2.line(cup_img, (0, cutoff_line_y), (width, cutoff_line_y), (0, 255, 0), 2)
+
                     # Convert to ROS Image message and publish
-                    ros_image = self.bridge.cv2_to_imgmsg(masked_color, "bgr8")
+                    ros_image = self.bridge.cv2_to_imgmsg(cup_img, "bgr8")
                     self.image_pub.publish(ros_image)
 
 

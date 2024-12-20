@@ -38,9 +38,9 @@ class ObjectDetector:
 
         self.tf_listener = tf.TransformListener()  # Create a TransformListener object
 
-        self.point_pub = rospy.Publisher("goal_point", Point, queue_size=10)
-        self.image_pub = rospy.Publisher('detected_cup', Image, queue_size=10)
-        self.color_pub = rospy.Publisher("object_color", Bool, queue_size=10)
+        self.point_pub = rospy.Publisher("goal_point", Point, queue_size=1)
+        self.image_pub = rospy.Publisher('detected_cup', Image, queue_size=1)
+        self.color_pub = rospy.Publisher("object_color", Bool, queue_size=1)
 
 
         rospy.spin()
@@ -127,11 +127,7 @@ class ObjectDetector:
         contours, _ = cv2.findContours(combined_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         centroids = []
         for cnt in contours:
-            # ADDED THIS AT 12/19 9:12PM
-            area = cv2.contourArea(cnt)
-            if area < 300:  # Adjust the threshold based on block size
-                continue  # Ignore small contours
-            # ADDED THIS AT 12/19 9:12PM
+            
 
             M = cv2.moments(cnt)
             if M["m00"] > 0:
@@ -209,8 +205,7 @@ class ObjectDetector:
                     # Overlay cup points on color image for visualization
                     cup_img = self.cv_color_image.copy()
                     cup_img[y_coords, x_coords] = [0, 0, 255]  # Highlight cup points in red
-                    cv2.circle(cup_img, (closest_object[0], closest_object[1]), 5, [255, 0, 0], -1)  # Draw green circle at center
-                    
+                    cv2.circle(cup_img, (closest_object[0], closest_object[1]), 5, [0, 255, 0], -1)  # Draw green circle at center
 
                     
                     cv2.line(cup_img, (0, cutoff_line_y), (width, cutoff_line_y), (0, 255, 0), 2)

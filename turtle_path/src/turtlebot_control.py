@@ -135,6 +135,8 @@ def controller(waypoint):
 
 def save_starting_position():
   global starting_pose
+  
+
   try:
     # Get the transformation from base_footprint to odom
     # odom is the fixed frame, base_footprint is the robot frame
@@ -240,7 +242,8 @@ def planning(goal_msg, color_msg):
         #   continue
         # else: 
         #   controller(waypoint)
-          
+      # desired_yaw = 0
+      # controller([orange_trash_pile[0],orange_trash_pile[1], desired_yaw])   
 
     else:
       # import pdb; pdb.set_trace() 
@@ -255,8 +258,8 @@ def planning(goal_msg, color_msg):
         if index == 8:
           controller(return_trajectory[5])
         controller(waypoint)
-      desired_yaw = 0
-      controller([starting_pose[0],starting_pose[1], desired_yaw])
+      # desired_yaw = 0
+      # controller([starting_pose[0],starting_pose[1], desired_yaw])
     # rospy.sleep(5)
     # ready_to_detect = True
     returning = False

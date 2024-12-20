@@ -23,6 +23,7 @@ ready_to_detect = True
 
 goal_subscriber = None
 
+test = True
 
 #Define the method which contains the main functionality of the node.
 def controller(waypoint):
@@ -167,7 +168,22 @@ def save_starting_position():
   except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
     print(f"Error saving starting position: {e}")
 
-def planning_callback(goal_msg, color_msg):
+
+def goal_callback(goal_msg, color_msg):
+  global processing_goal, test
+
+  # Check if a goal is already being processed
+  if test:
+      rospy.loginfo("Currently processing a goal. Ignoring new goal message.")
+      rospy.sleep(3)
+      test = False
+      return  # Ignore the new message while processing the current goal
+  rospy.loginfo(f"Received goal point: {goal_msg}")
+  planning(goal_msg, color_msg)
+  test = True
+  print("COMPLETE")
+
+def planning(goal_msg, color_msg):
   global ready_to_detect, returning
   
   if not ready_to_detect:
@@ -175,29 +191,24 @@ def planning_callback(goal_msg, color_msg):
     return
 
   try:
-    unsubscribe_from_goal_point()
+   
 
     goal_point = (goal_msg.x, goal_msg.y)
     object_color = color_msg.data
-    # green_trash_offset = (-0.40, -0.10)  
+    
     orange_trash_offset = (0.10, -0.20)  
-
-    ready_to_detect = False
 
     trajectory = plan_curved_trajectory(goal_point) # TODO: What is the tuple input to this function?
 
-    # TODO: write a loop to loop over our waypoints and call the controller function on each waypoint
     returning = False
 
-    
-    
     for waypoint in trajectory:
       controller(waypoint)
 
     returning = True
     if object_color:
       
-      print("Approached Orange Block")
+      print(f"_______________________________________{object_color}_________________________________________________________")
       save_starting_position()
       orange_trash_pile = (starting_pose[0] + orange_trash_offset[0],
                     starting_pose[1] + orange_trash_offset[1])
@@ -211,7 +222,6 @@ def planning_callback(goal_msg, color_msg):
         if index == 0:
           continue
     
-        # Example condition: special handling for the 8th waypoint
         if index == 8:
           controller(return_trajectory[5])
         # if index == 9:
@@ -230,11 +240,6 @@ def planning_callback(goal_msg, color_msg):
         #   continue
         # else: 
         #   controller(waypoint)
-        
-
-      # rospy.sleep(5)
-      # ready_to_detect = True
-      # print("ready to detect next block")
           
 
     else:
@@ -250,30 +255,31 @@ def planning_callback(goal_msg, color_msg):
         if index == 8:
           controller(return_trajectory[5])
         controller(waypoint)
-    
-    rospy.sleep(5)
-    ready_to_detect = True
+      desired_yaw = 0
+      controller([starting_pose[0],starting_pose[1], desired_yaw])
+    # rospy.sleep(5)
+    # ready_to_detect = True
     returning = False
-    print("ready to detect next block")
-    subscribe_to_goal_point()
+    # print("ready to detect next block")
+    
   except rospy.ROSInterruptException as e:
     print("Exception thrown in planning callback: " + e)
     pass
 
-def subscribe_to_goal_point():
-    global goal_subscriber
-    if goal_subscriber is None:
+# def subscribe_to_goal_point():
+#     global goal_subscriber
+#     if goal_subscriber is None:
         
-        rospy.loginfo("Subscribed to /goal_point")
-        return message_filters.Subscriber("/goal_point", Point)
+#         rospy.loginfo("Subscribed to /goal_point")
+#         return message_filters.Subscriber("/goal_point", Point)
 
-def unsubscribe_from_goal_point():
-    global goal_subscriber
-    if goal_subscriber is not None:
-        goal_sub.unregister()
-        goal_subscriber = None
-        rospy.loginfo("Unsubscribed from /goal_point")
-    print("NOT DETECTING ___________________________________________________________________________________________________")
+# def unsubscribe_from_goal_point():
+#     global goal_subscriber
+#     if goal_subscriber is not None:
+#         goal_sub.unregister()
+#         goal_subscriber = None
+#         rospy.loginfo("Unsubscribed from /goal_point")
+#     print("NOT DETECTING ___________________________________________________________________________________________________")
 
 # This is Python's sytax for a main() method, which is run by default
 # when exectued in the shell
@@ -290,19 +296,17 @@ if __name__ == '__main__':
 
   # rospy.Subscriber("/object_color", Bool, planning_callback)
 
-  goal_sub = subscribe_to_goal_point()  
-   
+  goal_sub = message_filters.Subscriber("/goal_point", Point)
   color_sub = message_filters.Subscriber("/object_color", Bool)
-  
-  
-  
+
+  # Synchronize messages with allow_headerless=True
   ts = message_filters.ApproximateTimeSynchronizer(
-    [goal_sub, color_sub],
-    queue_size=10,
-    slop=0.1,
-    allow_headerless=True  
+      [goal_sub, color_sub],
+      queue_size=1,
+      slop=0.1,
+      allow_headerless=True  
   )
-  ts.registerCallback(planning_callback)
+  ts.registerCallback(goal_callback)
   
   
   rospy.spin()

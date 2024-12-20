@@ -82,8 +82,9 @@ class ObjectDetector:
     def process_images(self):
         
         height, width = self.cv_color_image.shape[:2]
+        cutoff_line_y = round(height*0.6)
         mask = np.zeros((height, width), dtype=np.uint8)
-        mask[height//2:, :] = 255  # Only keep the bottom half
+        mask[cutoff_line_y:, :] = 255  # Only keep the bottom half
         # Apply the mask to the color and depth images
         masked_color = cv2.bitwise_and(self.cv_color_image, self.cv_color_image, mask=mask)
         masked_depth = cv2.bitwise_and(self.cv_depth_image, self.cv_depth_image, mask=mask)
@@ -110,7 +111,7 @@ class ObjectDetector:
         orange_mask = cv2.inRange(hsv, orange_lower_hsv, orange_upper_hsv)
 
         # TODO: Combine the masks using cv2.bitwise_or
-        combined_mask = cv2.bitwise_or(green_mask, orange_mask)
+        combined_mask = cv2.bitwise_or(orange_mask,green_mask)
 
 
         # TODO: Get the coordinates of the closest object
@@ -126,11 +127,25 @@ class ObjectDetector:
         contours, _ = cv2.findContours(combined_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         centroids = []
         for cnt in contours:
+            # ADDED THIS AT 12/19 9:12PM
+            area = cv2.contourArea(cnt)
+            if area < 300:  # Adjust the threshold based on block size
+                continue  # Ignore small contours
+            # ADDED THIS AT 12/19 9:12PM
+
             M = cv2.moments(cnt)
             if M["m00"] > 0:
                 cx = int(M["m10"] / M["m00"])
                 cy = int(M["m01"] / M["m00"])
+                # ADDED THIS AT 12/19 9:12PM
+                # depth = self.cv_depth_image[cy, cx]
+                # if depth == 0 or np.isnan(depth):
+                #     print(f"Skipping point at ({cx}, {cy}) due to invalid depth")
+                #     continue
+
+                # ADDED THIS AT 12/19 9:12PM
                 centroids.append((cx, cy))
+
         print("CENTROIDS: " + str(centroids))
 
         # TODO: Determine closest object
@@ -142,12 +157,16 @@ class ObjectDetector:
                 min_distance = distance
                 closest_object = (cx, cy) # center of closest object
    
-        # # Calculate the center of the detected region by 
+        # Calculate the center of the detected region by 
         # center_x = int(np.mean(x_coords))
         # center_y = int(np.mean(y_coords))
 
         # Fetch the depth value at the center
         depth = self.cv_depth_image[closest_object[1], closest_object[0]]
+        
+        
+
+        #depth = self.cv_depth_image[cy, cx]
         is_green = None
 
         if self.fx and self.fy and self.cx and self.cy:
@@ -161,6 +180,12 @@ class ObjectDetector:
             # determine if block is orange or green # TEST THIS ON WEDNESDAY 12/4
             center_x, center_y = closest_object
             is_orange = orange_mask[center_y, center_x] > 0
+            # orange_count = cv2.countNonZero(cv2.bitwise_and(orange_mask, orange_mask, mask=combined_mask))
+            # green_count = cv2.countNonZero(cv2.bitwise_and(green_mask, green_mask, mask=combined_mask))
+
+            # is_orange = orange_count > green_count
+            # print(f"Orange count: {orange_count}, Green count: {green_count}")
+
             print("IS IT ORANGE: " + str(is_orange))
 
 
@@ -187,7 +212,7 @@ class ObjectDetector:
                     cv2.circle(cup_img, (closest_object[0], closest_object[1]), 5, [255, 0, 0], -1)  # Draw green circle at center
                     
 
-                    cutoff_line_y = height // 2
+                    
                     cv2.line(cup_img, (0, cutoff_line_y), (width, cutoff_line_y), (0, 255, 0), 2)
 
                     # Convert to ROS Image message and publish

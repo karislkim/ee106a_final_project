@@ -18,93 +18,64 @@ from trajectory import plan_curved_trajectory
 from std_msgs.msg import Bool
 import message_filters
 
-
+#Global variables 
 ready_to_detect = True
-
 goal_subscriber = None
-
 test = True
 
-#Define the method which contains the main functionality of the node.
 def controller(waypoint):
-  """
-  Controls a turtlebot whose position is denoted by turtlebot_frame,
-  to go to a position denoted by target_frame
-  Inputs:
-  - turtlebot_frame: the tf frame of the AR tag on your turtlebot
-  - goal_frame: the tf frame of the target AR tag
-  """
-
-  # Create a publisher and a tf buffer, which is primed with a tf listener
-  pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
-  ## TODO: what topic should we publish to? how?
+ # Controls a turtlebot whose position is denoted by turtlebot_frame,
+ # to go to a position denoted by target_frame
+   pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
   tfBuffer = tf2_ros.Buffer()
   tfListener = tf2_ros.TransformListener(tfBuffer)
 
-  # Create a timer object that will sleep long enough to result in
-  # a 10Hz publishing rate
   r = rospy.Rate(10) # 10hz
-  # you can also use the rate to calculate your dt, but you don't have to
 
   # All in the form [x, y]
-  # NOTE: The Turtlebot typically does not need an integral term so we set it to 0 to make this a PD controller
-  Kp = np.diag([2, 0.8]) # TODO: You may need to tune these values for your turtlebot
-  Kd = np.diag([-0.5, 0.5]) # TODO: You may need to tune these values for your turtlebot
+  Kp = np.diag([2, 0.8])
+  Kd = np.diag([-0.5, 0.5])
   Ki = np.diag([0, 0])
 
-  prev_time = rospy.get_time() # TODO: initialize your time, what rospy function would be helpful here?
-  integ = np.zeros((2, 1), dtype=float) # TODO: initialize an empty np array -- make sure to keep your sizes consistent
-  derivative = np.zeros((2, 1), dtype=float) # TODO: initialize an empty np array 
-  previous_error = np.zeros((2, 1), dtype=float) # TODO: initialize an empty np array 
-
-  # Loop until the node is killed with Ctrl-C
+  prev_time = rospy.get_time() 
+  integ = np.zeros((2, 1), dtype=float) 
+  derivative = np.zeros((2, 1), dtype=float) 
+  previous_error = np.zeros((2, 1), dtype=float)
+ 
   while not rospy.is_shutdown():
     try:
-      #                                              target_frame, source_frame, current_time_in_ros, how long to wait for transform lookup
-      trans_odom_to_base_link = tfBuffer.lookup_transform("base_footprint", "odom", rospy.Time(), rospy.Duration(5)) # TODO: create a transform between odom to base link
-
+      trans_odom_to_base_link = tfBuffer.lookup_transform("base_footprint", "odom", rospy.Time(), rospy.Duration(5)) 
       (roll, pitch, baselink_yaw) = tf.transformations.euler_from_quaternion(
         [trans_odom_to_base_link.transform.rotation.x, trans_odom_to_base_link.transform.rotation.y,
             trans_odom_to_base_link.transform.rotation.z, trans_odom_to_base_link.transform.rotation.w])
 
 
-      waypoint_trans = PoseStamped() # TODO: initialize a PoseStamped
-      waypoint_trans.pose.position.x = waypoint[0] # TODO: what value would you use here?
-      waypoint_trans.pose.position.y = waypoint[1] # TODO: what value would you use here?
-      waypoint_trans.pose.position.z = 0           # TODO: what value would you use here?  # Assuming the waypoint is on the ground
+      waypoint_trans = PoseStamped() 
+      waypoint_trans.pose.position.x = waypoint[0] 
+      waypoint_trans.pose.position.y = waypoint[1] 
+      waypoint_trans.pose.position.z = 0         
 
-      quat = quaternion_from_euler(0, 0, waypoint[2]) # TODO: what would be the inputs to this function (there are 3)
-      waypoint_trans.pose.orientation.x = quat[0] # TODO: what value would you use here?
-      waypoint_trans.pose.orientation.y = quat[1] # TODO: what value would you use here?
-      waypoint_trans.pose.orientation.z = quat[2] # TODO: what value would you use here?
-      waypoint_trans.pose.orientation.w = quat[3] # TODO: what value would you use here?
+      quat = quaternion_from_euler(0, 0, waypoint[2]) 
+      waypoint_trans.pose.orientation.x = quat[0]
+      waypoint_trans.pose.orientation.y = quat[1] 
+      waypoint_trans.pose.orientation.z = quat[2] 
+      waypoint_trans.pose.orientation.w = quat[3] 
 
-      # Use the transform to compute the waypoint's pose in the base_link frame
       waypoint_in_base_link = do_transform_pose(waypoint_trans, trans_odom_to_base_link) # TODO: what would be the inputs to this function (there are 2)
       (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(
         [waypoint_in_base_link.pose.orientation.x, waypoint_in_base_link.pose.orientation.y,
             waypoint_in_base_link.pose.orientation.z, waypoint_in_base_link.pose.orientation.w])
 
       curr_time = rospy.get_time()
-
-      # some debug output below
-      print(f"Current: {trans_odom_to_base_link.transform.translation.x}, {trans_odom_to_base_link.transform.translation.y}, {baselink_yaw  }")
-      print(f"Target: {waypoint}")
-
-      # Process trans to get your state error
-      # Generate a control command to send to the robot
       x_error = waypoint_in_base_link.pose.position.x
       error = np.array([[x_error], [yaw]])# TODO: what are two values that we can use for this np.array, and what are the dimensions
-      print("ERROR: " + str(error))
-      # proportional term
+     
+    
       proportional = np.dot(Kp, error).squeeze()
-      
-      # integral term
-      dt = curr_time - prev_time # TODO: quick operation to determine dt
-      integ += error # TODO: integral is summing up error over time, so what would we expect to add on to our integral term tracker here?
+      dt = curr_time - prev_time
+      integ += error 
       integral = np.dot(Ki, integ).squeeze()
 
-      # dervative term
       error_deriv = (error - previous_error) / dt # TODO: quick operation to determine dt
       derivative = np.dot(Kd, error_deriv).squeeze()
 
@@ -113,24 +84,17 @@ def controller(waypoint):
       msg.angular.z = proportional[1] + derivative[1] + integral[1] 
 
       if returning: 
-        print("RETURNING NOW") # this is just a debugging print statement
-
       control_command = msg
-      print(control_command)
-
-      previous_error = error  # TODO
+      previous_error = error  
       prev_time = curr_time
       pub.publish(control_command)
 
-      if np.abs(error[0]) <= 0.03 and np.abs(error[1]) <= 0.2: #TODO: what is our stopping condition/how do we know to go to the next waypoint?
-        print("Moving to next waypoint in trajectory")
-        # import pdb; pdb.set_trace()
+      if np.abs(error[0]) <= 0.03 and np.abs(error[1]) <= 0.2: 
         return
 
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
       print("TF Error in Turtlebot Controller: " + e)
       pass
-    # Use our rate object to sleep until it is time to publish again
     r.sleep()
 
 def save_starting_position():
@@ -138,14 +102,8 @@ def save_starting_position():
   
 
   try:
-    # Get the transformation from base_footprint to odom
-    # odom is the fixed frame, base_footprint is the robot frame
-    # find the point in the world frame we want to go to and translate it to the robot frame
-    # refer to code in this lab
-    # this function can return the starting pose rather than setting it as a global variable
     tfBuffer = tf2_ros.Buffer()
     tfListener = tf2_ros.TransformListener(tfBuffer)
-
     start_transform = tfBuffer.lookup_transform("base_footprint", "odom", rospy.Time(), rospy.Duration(5))
     rotation_matrix = tf.transformations.quaternion_matrix([start_transform.transform.rotation.x, 
                                                             start_transform.transform.rotation.y,
@@ -156,57 +114,37 @@ def save_starting_position():
     transformation_matrix[:3, 3] = [start_transform.transform.translation.x,
                                     start_transform.transform.translation.y,
                                     start_transform.transform.translation.z]
-    print("TRANSFORMATION_MATRIX: " + str(transformation_matrix))
-
     starting_pose = np.dot(transformation_matrix, np.array([0, 0, 0, 1]))
-
-    print("STARTING_POSE: " + str(starting_pose))
-    
-    print(f"Starting position saved: {starting_pose}")
-
     starting_pose = (starting_pose[0], starting_pose[1])
-    
-
   except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
     print(f"Error saving starting position: {e}")
 
 
 def goal_callback(goal_msg, color_msg):
   global processing_goal, test
-
-  # Check if a goal is already being processed
   if test:
       rospy.loginfo("Currently processing a goal. Ignoring new goal message.")
       rospy.sleep(3)
       test = False
-      return  # Ignore the new message while processing the current goal
+      return  
   rospy.loginfo(f"Received goal point: {goal_msg}")
   planning(goal_msg, color_msg)
   test = True
-  print("COMPLETE")
 
 def planning(goal_msg, color_msg):
   global ready_to_detect, returning
-  
   if not ready_to_detect:
     print("not ready to detect")
     return
 
   try:
-   
-
     goal_point = (goal_msg.x, goal_msg.y)
     object_color = color_msg.data
-    
     orange_trash_offset = (0.10, -0.20)  
-
     trajectory = plan_curved_trajectory(goal_point) # TODO: What is the tuple input to this function?
-
     returning = False
-
     for waypoint in trajectory:
       controller(waypoint)
-
     returning = True
     if object_color:
       
@@ -214,11 +152,7 @@ def planning(goal_msg, color_msg):
       save_starting_position()
       orange_trash_pile = (starting_pose[0] + orange_trash_offset[0],
                     starting_pose[1] + orange_trash_offset[1])
-      
-
       return_trajectory = plan_curved_trajectory(orange_trash_pile)
-      
-
       for index, waypoint in enumerate(return_trajectory):
         
         if index == 0:
@@ -226,83 +160,26 @@ def planning(goal_msg, color_msg):
     
         if index == 8:
           controller(return_trajectory[5])
-        # if index == 9:
-        #   last =[0,0,0]
-        #   desired_roll = 0
-        #   desired_pitch = 0
-        #   desired_yaw = np.pi / 6  # Example: 90 degrees rotation
-        #   quat = quaternion_from_euler(desired_roll, desired_pitch, desired_yaw)                  
-        #   last[0]= quat[0]
-        #   last[1] = quat[1]
-        #   last[2] = quat[2]
-
-          
-          #controller(waypoint)
         controller(waypoint)
-        #   continue
-        # else: 
-        #   controller(waypoint)
-      # desired_yaw = 0
-      # controller([orange_trash_pile[0],orange_trash_pile[1], desired_yaw])   
-
     else:
-      # import pdb; pdb.set_trace() 
-     
       print('Approached Green Block')
       save_starting_position()
       return_trajectory = plan_curved_trajectory(starting_pose)
       for index, waypoint in enumerate(return_trajectory):
-        
         if index == 0:
           continue
         if index == 8:
           controller(return_trajectory[5])
         controller(waypoint)
-      # desired_yaw = 0
-      # controller([starting_pose[0],starting_pose[1], desired_yaw])
-    # rospy.sleep(5)
-    # ready_to_detect = True
-    returning = False
-    # print("ready to detect next block")
-    
+    returning = False    
   except rospy.ROSInterruptException as e:
     print("Exception thrown in planning callback: " + e)
     pass
 
-# def subscribe_to_goal_point():
-#     global goal_subscriber
-#     if goal_subscriber is None:
-        
-#         rospy.loginfo("Subscribed to /goal_point")
-#         return message_filters.Subscriber("/goal_point", Point)
-
-# def unsubscribe_from_goal_point():
-#     global goal_subscriber
-#     if goal_subscriber is not None:
-#         goal_sub.unregister()
-#         goal_subscriber = None
-#         rospy.loginfo("Unsubscribed from /goal_point")
-#     print("NOT DETECTING ___________________________________________________________________________________________________")
-
-# This is Python's sytax for a main() method, which is run by default
-# when exectued in the shell
 if __name__ == '__main__':
-  # Check if the node has received a signal to shut down
-  # If not, run the talker method
-
-  #Run this program as a new node in the ROS computation graph 
-  #called /turtlebot_controller.
-  
   rospy.init_node('turtlebot_controller', anonymous=True)
-
-  # rospy.Subscriber("/goal_point", Point, planning_callback) # TODO: what are we subscribing to here?
-
-  # rospy.Subscriber("/object_color", Bool, planning_callback)
-
   goal_sub = message_filters.Subscriber("/goal_point", Point)
   color_sub = message_filters.Subscriber("/object_color", Bool)
-
-  # Synchronize messages with allow_headerless=True
   ts = message_filters.ApproximateTimeSynchronizer(
       [goal_sub, color_sub],
       queue_size=1,
@@ -310,6 +187,5 @@ if __name__ == '__main__':
       allow_headerless=True  
   )
   ts.registerCallback(goal_callback)
-  
   
   rospy.spin()

@@ -97,8 +97,6 @@ def controller(waypoint):
 
 def save_starting_position():
   global starting_pose
-  
-
   try:
     tfBuffer = tf2_ros.Buffer()
     tfListener = tf2_ros.TransformListener(tfBuffer)
@@ -116,7 +114,6 @@ def save_starting_position():
     starting_pose = (starting_pose[0], starting_pose[1])
   except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
     print(f"Error saving starting position: {e}")
-
 
 def goal_callback(goal_msg, color_msg):
   global processing_goal, test

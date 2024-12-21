@@ -232,7 +232,6 @@ def main(goal_msg):
         print("Service call failed: %s"%e)
         return
 
-# Python's syntax for a main() method
 if __name__ == '__main__':
     rospy.init_node('service_query')
     goal_point_sub = rospy.Subscriber("goal_point", Point, goal_callback, queue_size=1)

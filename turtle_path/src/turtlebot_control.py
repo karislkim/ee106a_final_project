@@ -133,16 +133,13 @@ def planning(goal_msg, color_msg):
     for waypoint in trajectory:
       controller(waypoint)
     if object_color: 
-      print(f"_______________________________________{object_color}_________________________________________________________")
       save_starting_position()
       orange_trash_pile = (starting_pose[0] + orange_trash_offset[0],
                     starting_pose[1] + orange_trash_offset[1])
       return_trajectory = plan_curved_trajectory(orange_trash_pile)
       for index, waypoint in enumerate(return_trajectory):
-        
         if index == 0:
           continue
-    
         if index == 8:
           controller(return_trajectory[5])
         controller(waypoint)

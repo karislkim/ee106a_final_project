@@ -119,7 +119,10 @@ def main(goal_msg):
                 group.execute(plan[1])
                 limb = Limb("right")
                 joint_angles = limb.joint_angles()
-                position_camera(joint_angles['right_j0'], joint_angles['right_j1'], joint_angles['right_j2'], joint_angles['right_j3'], joint_angles['right_j4'], joint_angles['right_j5'], joint_angles['right_j6'], True)
+                position_camera(joint_angles['right_j0'], joint_angles['right_j1'], 
+                                joint_angles['right_j2'], joint_angles['right_j3'], 
+                                joint_angles['right_j4'], joint_angles['right_j5'], 
+                                joint_angles['right_j6'], True)
                 
             current_state = "FINAL_PICKUP"
             return

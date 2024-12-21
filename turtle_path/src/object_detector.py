@@ -39,7 +39,7 @@ class ObjectDetector:
         self.tf_listener = tf.TransformListener()  # Create a TransformListener object
 
         self.point_pub = rospy.Publisher("goal_point", Point, queue_size=1)
-        self.image_pub = rospy.Publisher('detected_cup', Image, queue_size=1)
+        self.image_pub = rospy.Publisher('detected_block', Image, queue_size=1)
         self.color_pub = rospy.Publisher("object_color", Bool, queue_size=1)
 
 
@@ -116,14 +116,11 @@ class ObjectDetector:
         contours, _ = cv2.findContours(combined_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         centroids = []
         for ct in contours:
-
             M = cv2.moments(ct)
             if M["m00"] > 0:
                 cx = int(M["m10"] / M["m00"])
                 cy = int(M["m01"] / M["m00"])
                 centroids.append((cx, cy))
-
-        print("CENTROIDS: " + str(centroids))
 
         # Determine closest object based on depth
         closest_object = None
@@ -136,8 +133,6 @@ class ObjectDetector:
 
         # Get the depth value at the center
         depth = self.cv_depth_image[closest_object[1], closest_object[0]]
-        
-        is_blue = None
 
         if self.fx and self.fy and self.cx and self.cy:
             camera_x, camera_y, camera_z = self.pixel_to_point(closest_object[0], closest_object[1], depth)
@@ -150,7 +145,6 @@ class ObjectDetector:
             # determine if block is orange or blue 
             center_x, center_y = closest_object
             is_orange = orange_mask[center_y, center_x] > 0
-            print("IS IT ORANGE: " + str(is_orange))
 
             # Convert the (X, Y, Z) coordinates from camera frame to odom frame
             try:
@@ -170,14 +164,14 @@ class ObjectDetector:
                     self.color_pub.publish(is_orange)
 
                     # Overlay cup points on color image for visualization
-                    cup_img = self.cv_color_image.copy()
-                    cup_img[y_coords, x_coords] = [0, 0, 255]  # Highlight cup points in red
-                    cv2.circle(cup_img, (closest_object[0], closest_object[1]), 5, [0, 255, 0], -1)  # Draw green circle at center
+                    block_img = self.cv_color_image.copy()
+                    block_img[y_coords, x_coords] = [0, 0, 255]  # Highlight cup points in red
+                    cv2.circle(block_img, (closest_object[0], closest_object[1]), 5, [0, 255, 0], -1)  # Draw green circle at center
                     
                     cv2.line(cup_img, (0, cutoff_line_y), (width, cutoff_line_y), (0, 255, 0), 2)
 
                     # Convert to ROS Image message and publish
-                    ros_image = self.bridge.cv2_to_imgmsg(cup_img, "bgr8")
+                    ros_image = self.bridge.cv2_to_imgmsg(block_img, "bgr8")
                     self.image_pub.publish(ros_image)
 
 

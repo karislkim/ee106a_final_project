@@ -18,10 +18,9 @@ from trajectory import plan_curved_trajectory
 from std_msgs.msg import Bool
 import message_filters
 
-#Global variables 
-ready_to_detect = True
+# Global variables 
 goal_subscriber = None
-test = True
+processing_goal = True
 
 def controller(waypoint):
 
@@ -80,8 +79,7 @@ def controller(waypoint):
       msg = Twist()
       msg.linear.x = proportional[0] + derivative[0] + integral[0] 
       msg.angular.z = proportional[1] + derivative[1] + integral[1] 
-
-      if returning: 
+      
       control_command = msg
       previous_error = error  
       prev_time = curr_time
@@ -116,33 +114,25 @@ def save_starting_position():
     print(f"Error saving starting position: {e}")
 
 def goal_callback(goal_msg, color_msg):
-  global processing_goal, test
-  if test:
+  global processing_goal
+  if processing_goal:
       rospy.loginfo("Currently processing a goal. Ignoring new goal message.")
       rospy.sleep(3)
-      test = False
+      processing_goal = False
       return  
   rospy.loginfo(f"Received goal point: {goal_msg}")
   planning(goal_msg, color_msg)
-  test = True
+  processing_goal = True
 
 def planning(goal_msg, color_msg):
-  global ready_to_detect, returning
-  if not ready_to_detect:
-    print("not ready to detect")
-    return
-
   try:
     goal_point = (goal_msg.x, goal_msg.y)
     object_color = color_msg.data
     orange_trash_offset = (0.10, -0.20)  
     trajectory = plan_curved_trajectory(goal_point) 
-    returning = False
     for waypoint in trajectory:
       controller(waypoint)
-    returning = True
-    if object_color:
-      
+    if object_color: 
       print(f"_______________________________________{object_color}_________________________________________________________")
       save_starting_position()
       orange_trash_pile = (starting_pose[0] + orange_trash_offset[0],
@@ -165,8 +155,7 @@ def planning(goal_msg, color_msg):
           continue
         if index == 8:
           controller(return_trajectory[5])
-        controller(waypoint)
-    returning = False    
+        controller(waypoint)  
   except rospy.ROSInterruptException as e:
     print("Exception thrown in planning callback: " + e)
     pass

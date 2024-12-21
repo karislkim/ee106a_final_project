@@ -112,28 +112,20 @@ class ObjectDetector:
              print("No points detected. Is your color filter wrong?")
              return
 
-        # TODO: Find contours after mask is applied to image
+        # Find contours and centroids of detected blocks
         contours, _ = cv2.findContours(combined_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         centroids = []
-        for cnt in contours:
-            
+        for ct in contours:
 
-            M = cv2.moments(cnt)
+            M = cv2.moments(ct)
             if M["m00"] > 0:
                 cx = int(M["m10"] / M["m00"])
                 cy = int(M["m01"] / M["m00"])
-                # ADDED THIS AT 12/19 9:12PM
-                # depth = self.cv_depth_image[cy, cx]
-                # if depth == 0 or np.isnan(depth):
-                #     print(f"Skipping point at ({cx}, {cy}) due to invalid depth")
-                #     continue
-
-                # ADDED THIS AT 12/19 9:12PM
                 centroids.append((cx, cy))
 
         print("CENTROIDS: " + str(centroids))
 
-        # Determine closest object based on centroids of their contours
+        # Determine closest object based on depth
         closest_object = None
         min_distance = float('inf')
         for cx, cy in centroids:

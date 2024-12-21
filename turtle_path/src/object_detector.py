@@ -79,7 +79,6 @@ class ObjectDetector:
             print("Error:", e)
 
     def process_images(self):
-        
         height, width = self.cv_color_image.shape[:2]
         cutoff_line_y = round(height*0.6)
         mask = np.zeros((height, width), dtype=np.uint8)
@@ -88,7 +87,6 @@ class ObjectDetector:
         # Apply the mask to the color and depth images
         masked_color = cv2.bitwise_and(self.cv_color_image, self.cv_color_image, mask=mask)
         masked_depth = cv2.bitwise_and(self.cv_depth_image, self.cv_depth_image, mask=mask)
-
 
         # Set blue and orange hsv values
         hsv = cv2.cvtColor(masked_color, cv2.COLOR_BGR2HSV)

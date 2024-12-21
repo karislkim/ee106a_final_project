@@ -24,15 +24,13 @@ goal_subscriber = None
 test = True
 
 def controller(waypoint):
- # Controls a turtlebot whose position is denoted by turtlebot_frame,
- # to go to a position denoted by target_frame
-   pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+
+  pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
   tfBuffer = tf2_ros.Buffer()
   tfListener = tf2_ros.TransformListener(tfBuffer)
 
   r = rospy.Rate(10) # 10hz
 
-  # All in the form [x, y]
   Kp = np.diag([2, 0.8])
   Kd = np.diag([-0.5, 0.5])
   Ki = np.diag([0, 0])
@@ -61,14 +59,14 @@ def controller(waypoint):
       waypoint_trans.pose.orientation.z = quat[2] 
       waypoint_trans.pose.orientation.w = quat[3] 
 
-      waypoint_in_base_link = do_transform_pose(waypoint_trans, trans_odom_to_base_link) # TODO: what would be the inputs to this function (there are 2)
+      waypoint_in_base_link = do_transform_pose(waypoint_trans, trans_odom_to_base_link) 
       (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(
         [waypoint_in_base_link.pose.orientation.x, waypoint_in_base_link.pose.orientation.y,
             waypoint_in_base_link.pose.orientation.z, waypoint_in_base_link.pose.orientation.w])
 
       curr_time = rospy.get_time()
       x_error = waypoint_in_base_link.pose.position.x
-      error = np.array([[x_error], [yaw]])# TODO: what are two values that we can use for this np.array, and what are the dimensions
+      error = np.array([[x_error], [yaw]])
      
     
       proportional = np.dot(Kp, error).squeeze()
@@ -76,7 +74,7 @@ def controller(waypoint):
       integ += error 
       integral = np.dot(Ki, integ).squeeze()
 
-      error_deriv = (error - previous_error) / dt # TODO: quick operation to determine dt
+      error_deriv = (error - previous_error) / dt 
       derivative = np.dot(Kd, error_deriv).squeeze()
 
       msg = Twist()
@@ -141,7 +139,7 @@ def planning(goal_msg, color_msg):
     goal_point = (goal_msg.x, goal_msg.y)
     object_color = color_msg.data
     orange_trash_offset = (0.10, -0.20)  
-    trajectory = plan_curved_trajectory(goal_point) # TODO: What is the tuple input to this function?
+    trajectory = plan_curved_trajectory(goal_point) 
     returning = False
     for waypoint in trajectory:
       controller(waypoint)

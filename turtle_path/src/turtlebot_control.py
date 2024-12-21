@@ -129,11 +129,15 @@ def planning(goal_msg, color_msg):
     goal_point = (goal_msg.x, goal_msg.y)
     object_color = color_msg.data
     orange_trash_offset = (0.10, -0.20)  
+    # approach the closest block
     trajectory = plan_curved_trajectory(goal_point) 
     for waypoint in trajectory:
       controller(waypoint)
+      
+    save_starting_position()
+    
+    # if block is orange, return it to a specific location   
     if object_color: 
-      save_starting_position()
       orange_trash_pile = (starting_pose[0] + orange_trash_offset[0],
                     starting_pose[1] + orange_trash_offset[1])
       return_trajectory = plan_curved_trajectory(orange_trash_pile)
@@ -143,9 +147,9 @@ def planning(goal_msg, color_msg):
         if index == 8:
           controller(return_trajectory[5])
         controller(waypoint)
+        
+    # if block is blue, return it to the origin of the world frame
     else:
-      print('Approached Green Block')
-      save_starting_position()
       return_trajectory = plan_curved_trajectory(starting_pose)
       for index, waypoint in enumerate(return_trajectory):
         if index == 0:

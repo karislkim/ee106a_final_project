@@ -46,14 +46,14 @@ class ObjectDetector:
         rospy.spin()
 
     def camera_info_callback(self, msg):
-        # TODO: Extract the intrinsic parameters from the CameraInfo message (look this message type up online)
+        #Extract the intrinsic parameters from the CameraInfo message 
         self.fx = msg.K[0]
         self.fy = msg.K[4]
         self.cx = msg.K[2]
         self.cy = msg.K[5]
 
     def pixel_to_point(self, u, v, depth):
-        # TODO: Use the camera intrinsics to convert pixel coordinates to real-world coordinates
+        # Use the camera intrinsics to convert pixel coordinates to real-world coordinates
         X = (u - self.cx) * depth / self.fx
         Y = (v - self.cy) * depth / self.fy
         Z = depth
@@ -61,10 +61,9 @@ class ObjectDetector:
 
     def color_image_callback(self, msg):
         try:
-            # Convert the ROS Image message to an OpenCV image (BGR8 format)
+            # Convert ROS Image message to OpenCV image (BGR8 format)
             self.cv_color_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
 
-            # If we have both color and depth images, process them
             if self.cv_depth_image is not None:
                 self.process_images()
 
@@ -73,7 +72,7 @@ class ObjectDetector:
 
     def depth_image_callback(self, msg):
         try:
-            # Convert the ROS Image message to an OpenCV image (16UC1 format)
+            # Convert ROS Image message to OpenCV image (16UC1 format)
             self.cv_depth_image = self.bridge.imgmsg_to_cv2(msg, "16UC1")
 
         except Exception as e:
@@ -84,40 +83,30 @@ class ObjectDetector:
         height, width = self.cv_color_image.shape[:2]
         cutoff_line_y = round(height*0.6)
         mask = np.zeros((height, width), dtype=np.uint8)
-        mask[cutoff_line_y:, :] = 255  # Only keep the bottom half
+        mask[cutoff_line_y:, :] = 255  # Get rid of background points above the line
+        
         # Apply the mask to the color and depth images
         masked_color = cv2.bitwise_and(self.cv_color_image, self.cv_color_image, mask=mask)
         masked_depth = cv2.bitwise_and(self.cv_depth_image, self.cv_depth_image, mask=mask)
 
 
+        # Set blue and orange hsv values
         hsv = cv2.cvtColor(masked_color, cv2.COLOR_BGR2HSV)
-        # Run `python hsv_color_thresholder.py` and tune the bounds so you only see your cup
-        # update lower_hsv and upper_hsv directly
 
-        # Green item HSV values (represents recycling)
-        # green_lower_hsv = np.array([57, 110, 39]) 
-        # green_upper_hsv = np.array([89, 255, 255])
-
-        # TODO: get hsv values for red
-        green_lower_hsv = np.array([96, 137, 80])
-        green_upper_hsv = np.array([179, 255, 255])
+        blue_lower_hsv = np.array([96, 137, 80])
+        blue_upper_hsv = np.array([179, 255, 255])
 
         orange_lower_hsv = np.array([0, 142, 162])
         orange_upper_hsv = np.array([179, 255, 255])
 
-        # Threshold the image to get only green color
-        # HINT: Lookup cv2.inRange()
-        green_mask = cv2.inRange(hsv, green_lower_hsv, green_upper_hsv)
+        # Create blue and orange masks, then combine
+        
+        blue_mask = cv2.inRange(hsv, blue_lower_hsv, blue_upper_hsv)
         orange_mask = cv2.inRange(hsv, orange_lower_hsv, orange_upper_hsv)
+        combined_mask = cv2.bitwise_or(orange_mask,blue_mask)
 
-        # TODO: Combine the masks using cv2.bitwise_or
-        combined_mask = cv2.bitwise_or(orange_mask,green_mask)
-
-
-        # TODO: Get the coordinates of the closest object
-        # HINT: Lookup np.nonzero()
-        y_coords, x_coords = np.nonzero(combined_mask) # dont forget to change the variable of mask to to combined mask
-
+        y_coords, x_coords = np.nonzero(combined_mask) 
+        
         # If there are no detected points, exit
         if len(x_coords) == 0 or len(y_coords) == 0:
              print("No points detected. Is your color filter wrong?")
@@ -144,7 +133,7 @@ class ObjectDetector:
 
         print("CENTROIDS: " + str(centroids))
 
-        # TODO: Determine closest object
+        # Determine closest object based on centroids of their contours
         closest_object = None
         min_distance = float('inf')
         for cx, cy in centroids:
@@ -152,18 +141,11 @@ class ObjectDetector:
             if distance < min_distance:
                 min_distance = distance
                 closest_object = (cx, cy) # center of closest object
-   
-        # Calculate the center of the detected region by 
-        # center_x = int(np.mean(x_coords))
-        # center_y = int(np.mean(y_coords))
 
-        # Fetch the depth value at the center
+        # Get the depth value at the center
         depth = self.cv_depth_image[closest_object[1], closest_object[0]]
         
-        
-
-        #depth = self.cv_depth_image[cy, cx]
-        is_green = None
+        is_blue = None
 
         if self.fx and self.fy and self.cx and self.cy:
             camera_x, camera_y, camera_z = self.pixel_to_point(closest_object[0], closest_object[1], depth)
@@ -173,17 +155,10 @@ class ObjectDetector:
             camera_link_y /= 1000
             camera_link_z /= 1000
 
-            # determine if block is orange or green # TEST THIS ON WEDNESDAY 12/4
+            # determine if block is orange or blue 
             center_x, center_y = closest_object
             is_orange = orange_mask[center_y, center_x] > 0
-            # orange_count = cv2.countNonZero(cv2.bitwise_and(orange_mask, orange_mask, mask=combined_mask))
-            # green_count = cv2.countNonZero(cv2.bitwise_and(green_mask, green_mask, mask=combined_mask))
-
-            # is_orange = orange_count > green_count
-            # print(f"Orange count: {orange_count}, Green count: {green_count}")
-
             print("IS IT ORANGE: " + str(is_orange))
-
 
             # Convert the (X, Y, Z) coordinates from camera frame to odom frame
             try:
@@ -206,7 +181,6 @@ class ObjectDetector:
                     cup_img = self.cv_color_image.copy()
                     cup_img[y_coords, x_coords] = [0, 0, 255]  # Highlight cup points in red
                     cv2.circle(cup_img, (closest_object[0], closest_object[1]), 5, [0, 255, 0], -1)  # Draw green circle at center
-
                     
                     cv2.line(cup_img, (0, cutoff_line_y), (width, cutoff_line_y), (0, 255, 0), 2)
 
